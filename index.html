@@ -14,9 +14,9 @@
                 <h2>🚚 Gestión de Viajes</h2>
             </div>
             <nav class="sidebar-nav">
-                <a href="#" class="nav-link active">📋 Gestión de Viajes</a>
-                <a href="#" class="nav-link">✅ Aprobaciones</a>
-                <a href="#" class="nav-link">👥 Gestión de Usuarios</a>
+                <a href="#" class="nav-link" data-view="gestionViajesView">📋 Gestión de Viajes</a>
+                <a href="#" class="nav-link" data-view="aprobacionesView">✅ Aprobaciones</a> 
+                <a href="#" class="nav-link" data-view="gestionUsuariosView">👥 Gestión de Usuarios</a>
             </nav>
             <div class="sidebar-footer">
                 <p><strong>alexisc.davidoff@gmail.com</strong></p>
@@ -26,6 +26,7 @@
 
         <!-- CONTENIDO PRINCIPAL DERECHA -->
         <main class="main-content">
+            <div id="gestionViajesView" class="view-container">
             <header class="main-header">
                 <h1>Gestión de Viajes</h1>
                 <button class="logout-button">Cerrar Sesión</button>
@@ -70,6 +71,30 @@
                     </div>
                 </section>
             </div>
+        </div>
+            <!-- =============================================== -->
+            <!-- NUEVA SECCIÓN: GESTIÓN DE USUARIOS -->
+            <!-- =============================================== -->
+
+            <div id="gestionUsuariosView" class="view-container hidden"> <!-- Oculta por defecto -->
+                <header class="main-header">
+                    <h1>Gestión de Usuarios</h1>
+                    <button class="logout-button">Cerrar Sesión</button>
+                </header>
+
+                <div class="content-wrapper">
+                    <div class="toolbar">
+                        <button id="btnAnadirUsuario" class="btn-primary">Añadir Nuevo Usuario</button>
+                    </div>
+                    <div id="listaUsuarios">
+                        <!-- La tabla de usuarios se cargará aquí -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- =============================================== -->
+            <!--       FIN DE LA NUEVA SECCIÓN                 -->
+            <!-- =============================================== -->
         </main>
     </div>
 

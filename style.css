@@ -141,3 +141,34 @@ tbody tr:hover { background-color: #f5f5f5; }
 .status-aprobado { background-color: #2ecc71; }
 .status-rechazado { background-color: #e74c3c; }
 .status-programado { background-color: #f39c12; }
+
+/* --- ESTILOS PARA GESTIÓN DE VISTAS Y TOOLBAR --- */
+
+/* Contenedor principal para cada "página" o vista de la aplicación */
+.view-container.hidden {
+    display: none;
+}
+
+/* Barra de herramientas sobre las tablas */
+.toolbar {
+    display: flex;
+    justify-content: flex-end; /* Alinea los botones a la derecha */
+    margin-bottom: 20px;
+}
+
+/* Estilo para botones de acción primarios */
+.btn-primary {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+}
