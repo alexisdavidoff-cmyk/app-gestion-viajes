@@ -1,6 +1,12 @@
+/**
+ * @file app.js
+ * @description Lógica principal del frontend para la aplicación JMP.
+ */
+
 // === CONFIGURACIÓN ===
 // Pega aquí la URL de la API que implementaste en Apps Script
 const API_URL = "https://script.google.com/macros/s/AKfycbwAOY7JXi1EAso_zj-WJ9zqupHX8NkPcf9iHnYxixiwT5XHIDJy75I8xBzH_04R6u7n/exec";
+
 
 // === INICIALIZACIÓN ===
 document.addEventListener('DOMContentLoaded', () => {
@@ -20,8 +26,10 @@ async function loadUsers() {
     tableBody.innerHTML = '<tr><td colspan="5" class="text-center">Cargando...</td></tr>';
     try {
         const response = await fetch(`${API_URL}?action=getUsers`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        if (!response.ok) throw new Error(`Error de red! Estado: ${response.status}`);
         const users = await response.json();
+        
+        if (users.status === 'error') throw new Error(users.message);
         
         const tableContent = users.map(user => `
             <tr>
@@ -39,7 +47,7 @@ async function loadUsers() {
         tableBody.innerHTML = tableContent || '<tr><td colspan="5" class="text-center">No hay usuarios.</td></tr>';
     } catch (error) {
         console.error("Error al cargar usuarios:", error);
-        tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error al cargar datos.</td></tr>';
+        tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error al cargar datos: ${error.message}</td></tr>`;
     }
 }
 
@@ -61,39 +69,36 @@ async function handleUserFormSubmit(event) {
         supervisor: form.supervisor.value
     };
 
-    // Esta es la URL a la que se enviarán los datos.
-    // Apps Script maneja las redirecciones, por lo que una simple llamada POST funciona.
-    const final_url = API_URL;
-
     try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            // quitamos mode: 'no-cors'
-            // redirect: 'follow' puede volver a usarse
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ action: 'createUser', payload: userInfo })
-        });
-
-        const result = await response.json(); // ¡Ahora podemos leer la respuesta!
+        // Preparamos los datos que se enviarán
+        const requestData = { 
+            action: 'createUser', 
+            payload: userInfo 
+        };
         
+        // Codificamos los datos para que viajen de forma segura en la URL
+        const encodedData = encodeURIComponent(JSON.stringify(requestData));
+        
+        // Construimos la URL final para la petición GET que actuará como un POST
+        const final_url = `${API_URL}?action=proxyPost&data=${encodedData}`;
+
+        const response = await fetch(final_url);
+        if (!response.ok) throw new Error(`Error de red! Estado: ${response.status}`);
+        
+        const result = await response.json();
+
         if (result.status === 'success') {
             alert(result.message);
-            // ...
+            form.reset();
+            toggleDriverFields();
+            loadUsers();
         } else {
             throw new Error(result.message);
         }
-        
-        
-        alert("Usuario enviado para creación. Refrescando la lista...");
-        form.reset();
-        toggleDriverFields();
-        loadUsers();
 
     } catch (error) {
-        console.error("Error al crear usuario (fetch):", error);
-        alert(`Error: Falló la comunicación con el servidor. ${error.message}`);
+        console.error("Error al crear usuario:", error);
+        alert(`Error: ${error.message}`);
     } finally {
         submitButton.disabled = false;
         submitButton.innerHTML = 'Guardar Usuario';
