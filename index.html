@@ -16,19 +16,23 @@
                     <h3>Gestión de Usuarios y Choferes</h3>
                 </div>
                 <div class="card-body">
+                
                     <form id="userForm">
-                        <input type="hidden" id="userId">
-                        <div class="row">
-                            <div class="col-md-4 mb-3"><label class="form-label">Nombre</label><input type="text" name="nombre" id="nombre" class="form-control" required></div>
-                            <div class="col-md-4 mb-3"><label class="form-label">Apellido</label><input type="text" name="apellido" id="apellido" class="form-control" required></div>
-                            <div class="col-md-4 mb-3"><label class="form-label">Email</label><input type="email" name="email" id="email" class="form-control" required></div>
+                    <!-- CAMBIO 1: Campo oculto para guardar el ID del usuario en modo edición -->
+                    <input type="hidden" id="userId">
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3"><label class="form-label">Nombre</label><input type="text" name="nombre" id="nombre" class="form-control" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Apellido</label><input type="text" name="apellido" id="apellido" class="form-control" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Email</label><input type="email" name="email" id="email" class="form-control" required></div>
+                    </div>
+                    <div class="row align-items-end">
+                        <div class="col-md-5 mb-3">
+                            <label class="form-label">Contraseña</label>
+                            <input type="password" name="password" id="password" class="form-control">
+                            <!-- CAMBIO 2: Texto de ayuda que mostraremos al editar -->
+                            <small id="passwordHelp" class="form-text text-muted" style="display: none;">Dejar en blanco para no cambiarla.</small>                
                         </div>
-                        <div class="row align-items-end">
-                            <div class="col-md-5 mb-3">
-                                <label class="form-label">Contraseña</label>
-                                <input type="password" name="password" id="password" class="form-control" required>
-                                <small class="form-text text-muted">Requerida para usuarios nuevos.</small>
-                            </div>
                             <div class="col-md-5 mb-3">
                                 <label class="form-label">Rol</label>
                                 <select name="rol" id="rol" class="form-select" required>

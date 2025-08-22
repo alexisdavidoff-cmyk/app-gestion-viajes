@@ -7,6 +7,8 @@
 // Pega aquí la URL de la API que implementaste en Apps Script
 const API_URL = "https://script.google.com/macros/s/AKfycbxadib32HzW41TbuHciSIgqQuHokCyx8e50DLDEMQE2KDVKeVWAUx8KBO1FUNleU0Nz/exec";
 
+// === VARIABLES GLOBALES ===
+let allUsers = []; // Guardaremos una copia local de los usuarios para la función de editar
 
 // === INICIALIZACIÓN ===
 document.addEventListener('DOMContentLoaded', () => {
@@ -14,13 +16,20 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeUserModule();
 });
 
+
 // === MÓDULO DE USUARIOS ===
 function initializeUserModule() {
+    // Listeners de eventos
     document.getElementById('rol').addEventListener('change', toggleDriverFields);
     document.getElementById('userForm').addEventListener('submit', handleUserFormSubmit);
+    
+    // Carga inicial de datos
     loadUsers();
 }
 
+/**
+ * Carga la lista de usuarios desde la API y la renderiza en la tabla.
+ */
 async function loadUsers() {
     const tableBody = document.getElementById('userTableBody');
     tableBody.innerHTML = '<tr><td colspan="5" class="text-center">Cargando...</td></tr>';
@@ -30,16 +39,17 @@ async function loadUsers() {
         const result = await response.json();
         
         if (result.status === 'error') throw new Error(result.message);
-        const users = result;
         
-        const tableContent = users.map(user => `
+        allUsers = result; // Guardar la lista de usuarios globalmente
+        
+        const tableContent = allUsers.map(user => `
             <tr>
                 <td>${user.Apellido_Nombre || ''}</td>
                 <td>${user.Email || ''}</td>
                 <td>${user.Rol || ''}</td>
-                <td>${user.Activo ? 'Sí' : 'No'}</td>
+                <td><span class="badge ${user.Activo ? 'bg-success' : 'bg-secondary'}">${user.Activo ? 'Sí' : 'No'}</span></td>
                 <td>
-                    <button class="btn btn-sm btn-warning" disabled>Editar</button>
+                    <button class="btn btn-sm btn-warning" onclick="editUser('${user.UserID}')">Editar</button>
                     <button class="btn btn-sm btn-danger" disabled>Eliminar</button>
                 </td>
             </tr>
@@ -48,10 +58,47 @@ async function loadUsers() {
         tableBody.innerHTML = tableContent || '<tr><td colspan="5" class="text-center">No hay usuarios.</td></tr>';
     } catch (error) {
         console.error("Error al cargar usuarios:", error);
-        tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error al cargar datos: ${error.message}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error al cargar datos.</td></tr>`;
     }
 }
 
+/**
+ * Rellena el formulario con los datos de un usuario para su edición.
+ * @param {string} userId - El ID del usuario a editar.
+ */
+function editUser(userId) {
+    // Buscamos el usuario en nuestra copia local
+    const user = allUsers.find(u => u.UserID === userId);
+    if (!user) {
+        alert("Error: No se encontró el usuario.");
+        return;
+    }
+
+    // Rellenamos el formulario con los datos
+    document.getElementById('userId').value = user.UserID; // Guardamos el ID en el campo oculto
+    document.getElementById('nombre').value = user.Nombre;
+    document.getElementById('apellido').value = user.Apellido;
+    document.getElementById('email').value = user.Email;
+    document.getElementById('rol').value = user.Rol;
+    
+    // Rellenamos los campos de chofer (si existen en el objeto user)
+    document.getElementById('licencia').value = user.Licencia || '';
+    document.getElementById('dni').value = user.DNI || '';
+    document.getElementById('supervisor').value = user.Supervisor || '';
+    
+    // Adaptamos el campo de contraseña para el modo edición
+    const passwordInput = document.getElementById('password');
+    passwordInput.required = false; // La contraseña no es obligatoria al editar
+    passwordInput.placeholder = "Dejar en blanco para no cambiar";
+    document.getElementById('passwordHelp').style.display = 'block';
+
+    toggleDriverFields(); // Asegurarse de que los campos de chofer se muestren si es necesario
+    window.scrollTo(0, 0); // Llevamos al usuario al principio de la página para ver el formulario
+}
+
+/**
+ * Maneja el envío del formulario, decidiendo si se crea o actualiza un usuario.
+ */
 async function handleUserFormSubmit(event) {
     event.preventDefault();
     const form = event.target;
@@ -59,45 +106,50 @@ async function handleUserFormSubmit(event) {
     submitButton.disabled = true;
     submitButton.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;
 
+    // Obtenemos el ID del campo oculto. Si tiene valor, estamos editando.
+    const userId = document.getElementById('userId').value;
+    
     const userInfo = {
         nombre: form.nombre.value,
         apellido: form.apellido.value,
         email: form.email.value,
         password: form.password.value,
         rol: form.rol.value,
+        // En el futuro, necesitaremos un campo para 'activo' en el formulario
+        activo: true, // Por ahora, lo dejamos como true
         licencia: form.licencia.value,
         dni: form.dni.value,
         supervisor: form.supervisor.value
     };
+    
+    // Decidimos la acción y el payload a enviar
+    const action = userId ? 'updateUser' : 'createUser';
+    const payload = userId ? { userId: userId, payload: userInfo } : { payload: userInfo };
 
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
-            // redirect: 'follow' es importante para que fetch siga la redirección de Google
-            redirect: 'follow', 
-            headers: {
-                // Usamos text/plain para evitar un "preflight" de CORS, es más simple
-                'Content-Type': 'text/plain;charset=utf-8', 
-            },
-            // El cuerpo sigue siendo un string JSON
-            body: JSON.stringify({ action: 'createUser', payload: userInfo })
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: action, ...payload })
         });
-        
-        // La respuesta final de una redirección seguida es un JSON
-        const result = await response.json();
 
+        const result = await response.json();
+        
         if (result.status === 'success') {
             alert(result.message);
-            form.reset();
+            form.reset(); // Limpia el formulario
+            document.getElementById('userId').value = ''; // Limpia el ID oculto
+            document.getElementById('password').required = true;
+            document.getElementById('password').placeholder = "";
+            document.getElementById('passwordHelp').style.display = 'none';
             toggleDriverFields();
-            loadUsers();
+            loadUsers(); // Recarga la lista de usuarios
         } else {
-            // Si el backend devolvió un error, lo mostramos
             throw new Error(result.message);
         }
-
     } catch (error) {
-        console.error("Error al crear usuario:", error);
+        console.error("Error al guardar usuario:", error);
         alert(`Error: ${error.message}`);
     } finally {
         submitButton.disabled = false;
@@ -105,6 +157,9 @@ async function handleUserFormSubmit(event) {
     }
 }
 
+/**
+ * Muestra u oculta los campos específicos del rol "Chofer".
+ */
 function toggleDriverFields() {
     const driverFields = document.querySelector('#userForm .driver-fields');
     const rol = document.getElementById('rol').value;
