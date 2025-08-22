@@ -1,6 +1,6 @@
 // === CONFIGURACIÓN ===
 // Pega aquí la URL de la API que implementaste en Apps Script
-const API_URL = "https://script.google.com/macros/s/AKfycbz8WEleRzcvt_3tOJgBYDa3SPh8E4KQEU-55_mzaHBRxpKiEGPvhtJFWItrRza9OGr6/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwAOY7JXi1EAso_zj-WJ9zqupHX8NkPcf9iHnYxixiwT5XHIDJy75I8xBzH_04R6u7n/exec";
 
 // === INICIALIZACIÓN ===
 document.addEventListener('DOMContentLoaded', () => {
@@ -66,17 +66,26 @@ async function handleUserFormSubmit(event) {
     const final_url = API_URL;
 
     try {
-        const response = await fetch(final_url, {
+        const response = await fetch(API_URL, {
             method: 'POST',
-            mode: 'no-cors', // Importante para desarrollo local y evitar errores de CORS
+            // quitamos mode: 'no-cors'
+            // redirect: 'follow' puede volver a usarse
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ action: 'createUser', payload: userInfo })
         });
+
+        const result = await response.json(); // ¡Ahora podemos leer la respuesta!
         
-        // Con 'no-cors', no podemos leer la respuesta, pero si la llamada no falló,
-        // asumimos que el backend lo recibió.
+        if (result.status === 'success') {
+            alert(result.message);
+            // ...
+        } else {
+            throw new Error(result.message);
+        }
+        
+        
         alert("Usuario enviado para creación. Refrescando la lista...");
         form.reset();
         toggleDriverFields();
