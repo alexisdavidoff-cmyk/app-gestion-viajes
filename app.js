@@ -27,9 +27,10 @@ async function loadUsers() {
     try {
         const response = await fetch(`${API_URL}?action=getUsers`);
         if (!response.ok) throw new Error(`Error de red! Estado: ${response.status}`);
-        const users = await response.json();
+        const result = await response.json();
         
-        if (users.status === 'error') throw new Error(users.message);
+        if (result.status === 'error') throw new Error(result.message);
+        const users = result;
         
         const tableContent = users.map(user => `
             <tr>
@@ -70,21 +71,19 @@ async function handleUserFormSubmit(event) {
     };
 
     try {
-        // Preparamos los datos que se enviarán
-        const requestData = { 
-            action: 'createUser', 
-            payload: userInfo 
-        };
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            // redirect: 'follow' es importante para que fetch siga la redirección de Google
+            redirect: 'follow', 
+            headers: {
+                // Usamos text/plain para evitar un "preflight" de CORS, es más simple
+                'Content-Type': 'text/plain;charset=utf-8', 
+            },
+            // El cuerpo sigue siendo un string JSON
+            body: JSON.stringify({ action: 'createUser', payload: userInfo })
+        });
         
-        // Codificamos los datos para que viajen de forma segura en la URL
-        const encodedData = encodeURIComponent(JSON.stringify(requestData));
-        
-        // Construimos la URL final para la petición GET que actuará como un POST
-        const final_url = `${API_URL}?action=proxyPost&data=${encodedData}`;
-
-        const response = await fetch(final_url);
-        if (!response.ok) throw new Error(`Error de red! Estado: ${response.status}`);
-        
+        // La respuesta final de una redirección seguida es un JSON
         const result = await response.json();
 
         if (result.status === 'success') {
@@ -93,6 +92,7 @@ async function handleUserFormSubmit(event) {
             toggleDriverFields();
             loadUsers();
         } else {
+            // Si el backend devolvió un error, lo mostramos
             throw new Error(result.message);
         }
 
