@@ -48,10 +48,14 @@
                         <input type="text" id="destino" name="destino" required>
                         
                         <label for="conductor">Conductor:</label>
-                        <input type="text" id="conductor" name="conductor" required>
+                        <select id="conductor" name="conductor" required>
+                            <option value="" disabled selected>Cargando conductores...</option>
+                        </select>
                         
                         <label for="vehiculo">Vehículo (Patente/Unidad):</label>
-                        <input type="text" id="vehiculo" name="vehiculo" required>
+                        <select id="vehiculo" name="vehiculo" required>
+                            <option value="" disabled selected>Cargando vehículos...</option>
+                        </select>
                         
                         <button type="submit">Guardar Viaje</button>
                     </form>
