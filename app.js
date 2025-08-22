@@ -76,19 +76,22 @@ function editUser(userId) {
 
 async function handleUserFormSubmit(event) {
     event.preventDefault();
-    const form = event.target;
+    const form = event.target; // 'form' es el elemento <form> que disparó el evento
     const submitButton = form.querySelector('button[type="submit"]');
     submitButton.disabled = true;
     submitButton.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;
 
-    const userId = document.getElementById('userId').value;
+    const userId = form.userId.value; // Accedemos a través de form.idDelInput
+    
+    // ===== CORRECCIÓN CLAVE AQUÍ =====
+    // Accedemos a los valores a través del objeto 'form' y sus elementos con 'name'
     const userInfo = {
         nombre: form.nombre.value,
         apellido: form.apellido.value,
         email: form.email.value,
         password: form.password.value,
         rol: form.rol.value,
-        activo: document.getElementById('activo').checked,
+        activo: form.activo.checked, // Mucho más directo y seguro
         licencia: form.licencia.value,
         dni: form.dni.value,
         supervisor: form.supervisor.value
@@ -97,7 +100,7 @@ async function handleUserFormSubmit(event) {
     const action = userId ? 'updateUser' : 'createUser';
     const requestBody = {
         action: action,
-        userId: userId, // Se envía siempre, el backend lo usa si lo necesita
+        userId: userId,
         payload: userInfo
     };
 
@@ -105,6 +108,7 @@ async function handleUserFormSubmit(event) {
         const result = await callApi('POST', requestBody);
         alert(result.message);
         form.reset();
+        // Al resetear, también debemos limpiar manualmente los campos de control
         document.getElementById('userId').value = '';
         document.getElementById('password').required = true;
         document.getElementById('password').placeholder = "";
