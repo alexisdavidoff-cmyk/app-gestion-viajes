@@ -99,6 +99,8 @@ function editUser(userId) {
 /**
  * Maneja el envío del formulario, decidiendo si se crea o actualiza un usuario.
  */
+// ARCHIVO: app.js
+
 async function handleUserFormSubmit(event) {
     event.preventDefault();
     const form = event.target;
@@ -106,7 +108,6 @@ async function handleUserFormSubmit(event) {
     submitButton.disabled = true;
     submitButton.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;
 
-    // Obtenemos el ID del campo oculto. Si tiene valor, estamos editando.
     const userId = document.getElementById('userId').value;
     
     const userInfo = {
@@ -115,36 +116,48 @@ async function handleUserFormSubmit(event) {
         email: form.email.value,
         password: form.password.value,
         rol: form.rol.value,
-        // En el futuro, necesitaremos un campo para 'activo' en el formulario
-        activo: true, // Por ahora, lo dejamos como true
-        licencia: form.licencia.value,
-        dni: form.dni.value,
-        supervisor: form.supervisor.value
+        activo: form.querySelector('#activo') ? form.querySelector('#activo').checked : true,
+        licencia: form.licencia ? form.licencia.value : '',
+        dni: form.dni ? form.dni.value : '',
+        supervisor: form.supervisor ? form.supervisor.value : ''
     };
     
-    // Decidimos la acción y el payload a enviar
-    const action = userId ? 'updateUser' : 'createUser';
-    const payload = userId ? { userId: userId, payload: userInfo } : { payload: userInfo };
+    // ===== CORRECCIÓN CLAVE AQUÍ =====
+    // Construimos el cuerpo de la petición explícitamente
+    let requestBody = {};
+
+    if (userId) {
+        // Si estamos actualizando, el backend espera 'action', 'userId' y 'payload'
+        requestBody = {
+            action: 'updateUser',
+            userId: userId,
+            payload: userInfo
+        };
+    } else {
+        // Si estamos creando, el backend espera 'action' y 'payload'
+        requestBody = {
+            action: 'createUser',
+            payload: userInfo
+        };
+    }
 
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
             redirect: 'follow',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: action, ...payload })
+            body: JSON.stringify(requestBody) // Enviamos el cuerpo construido correctamente
         });
 
         const result = await response.json();
-        
         if (result.status === 'success') {
             alert(result.message);
-            form.reset(); // Limpia el formulario
-            document.getElementById('userId').value = ''; // Limpia el ID oculto
+            form.reset();
+            document.getElementById('userId').value = '';
             document.getElementById('password').required = true;
-            document.getElementById('password').placeholder = "";
             document.getElementById('passwordHelp').style.display = 'none';
             toggleDriverFields();
-            loadUsers(); // Recarga la lista de usuarios
+            loadUsers();
         } else {
             throw new Error(result.message);
         }
