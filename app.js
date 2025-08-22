@@ -5,7 +5,7 @@
 
 // === CONFIGURACIÓN ===
 // Pega aquí la URL de la API que implementaste en Apps Script
-const API_URL = "https://script.google.com/macros/s/AKfycbwAOY7JXi1EAso_zj-WJ9zqupHX8NkPcf9iHnYxixiwT5XHIDJy75I8xBzH_04R6u7n/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxadib32HzW41TbuHciSIgqQuHokCyx8e50DLDEMQE2KDVKeVWAUx8KBO1FUNleU0Nz/exec";
 
 
 // === INICIALIZACIÓN ===
