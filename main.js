@@ -706,13 +706,16 @@ function getCurrentLocation() {
  * Inicializa la vista del chofer, mostrando sus viajes asignados
  * y los botones de acción correspondientes a cada estado.
  */
+/**
+ * Inicializa la vista del chofer, mostrando tarjetas de viaje detalladas
+ * con toda la información relevante y los botones de acción.
+ */
 async function initChoferView() {
     const user = JSON.parse(sessionStorage.getItem('user'));
     document.getElementById('user-info-chofer').textContent = `Conectado como: ${user.nombre}`;
 
-    // Configurar el botón de logout para esta vista
-    const logoutBtn = document.getElementById('logoutBtn-chofer');
-    logoutBtn.addEventListener('click', () => {
+    // Configurar el botón de logout
+    document.getElementById('logoutBtn-chofer').addEventListener('click', () => {
         sessionStorage.removeItem('user');
         window.location.hash = '/';
     });
@@ -720,31 +723,29 @@ async function initChoferView() {
     const tripListContainer = document.getElementById('chofer-trip-list');
     tripListContainer.innerHTML = '<p>Cargando viajes...</p>';
 
-    const [viajes, clientes] = await Promise.all([
+    const [viajes, clientes, vehiculos] = await Promise.all([
         callApi('getRecords', { sheetName: 'Viajes' }),
-        callApi('getRecords', { sheetName: 'Clientes' })
+        callApi('getRecords', { sheetName: 'Clientes' }),
+        callApi('getRecords', { sheetName: 'Vehiculos' })
     ]);
 
-    if (!viajes || !clientes) {
+    if (!viajes || !clientes || !vehiculos) {
         tripListContainer.innerHTML = '<p>No se pudieron cargar los viajes. Intenta de nuevo más tarde.</p>';
         return;
     }
 
     const clientesMap = new Map(clientes.map(c => [c.ID, c.RazonSocial]));
+    const vehiculosMap = new Map(vehiculos.map(v => `${v.Patente} - ${v.Marca} ${v.Modelo}`));
 
-    // Filtramos para mostrar todos los viajes relevantes para el chofer
     const misViajes = viajes.filter(v => 
         v.ChoferID === user.choferId && ['Aprobado', 'En curso', 'Finalizado'].includes(v.Estado)
-    );
-
-    // Ordenamos los viajes para que los activos aparezcan primero
-    misViajes.sort((a, b) => {
+    ).sort((a, b) => {
         const order = { 'En curso': 1, 'Aprobado': 2, 'Finalizado': 3 };
         return (order[a.Estado] || 99) - (order[b.Estado] || 99);
     });
 
     if (misViajes.length === 0) {
-        tripListContainer.innerHTML = '<p>No tienes viajes asignados actualmente.</p>';
+        tripListContainer.innerHTML = '<div class="no-trips-card"><p>No tienes viajes asignados actualmente.</p></div>';
         return;
     }
 
@@ -758,37 +759,44 @@ async function initChoferView() {
             actionButton = `<button class="btn-pdf" data-id="${viaje.ID}">📄 Descargar Constancia</button>`;
         }
 
-        // Añadimos una clase extra para los viajes finalizados para poder darles un estilo diferente
-        const extraCardClass = viaje.Estado === 'Finalizado' ? 'status-finalizado-card' : '';
+        const vehiculoInfo = vehiculos.find(v => v.ID === viaje.VehiculoID);
 
         return `
-            <div class="trip-card status-${viaje.Estado.toLowerCase()} ${extraCardClass}" data-id="${viaje.ID}">
+            <div class="trip-card-detailed status-${viaje.Estado.toLowerCase()}">
                 <div class="trip-card-header">
-                    <strong>Cliente:</strong> ${clientesMap.get(viaje.ClienteID) || 'N/A'}
+                    <h3>${clientesMap.get(viaje.ClienteID) || 'Cliente no encontrado'}</h3>
+                    <span class="status ${viaje.Estado.toLowerCase()}">${viaje.Estado}</span>
                 </div>
                 <div class="trip-card-body">
-                    <p><strong>Origen:</strong> ${viaje.Origen}</p>
-                    <p><strong>Destino:</strong> ${viaje.Destino}</p>
-                    <p><strong>Estado:</strong> <span class="status ${viaje.Estado.toLowerCase()}">${viaje.Estado}</span></p>
+                    <div class="trip-info-grid">
+                        <div><strong>Origen:</strong> <p>${viaje.Origen}</p></div>
+                        <div><strong>Destino:</strong> <p>${viaje.Destino}</p></div>
+                        <div><strong>Fecha Inicio:</strong> <p>${new Date(viaje.FechaHoraSalida).toLocaleString()}</p></div>
+                        <div><strong>Fecha Fin Est.:</strong> <p>${new Date(viaje.FechaHoraFinEstimada).toLocaleString()}</p></div>
+                        <div class="full-width"><strong>Propósito:</strong> <p>${viaje.Proposito || 'N/A'}</p></div>
+                        <div class="full-width"><strong>Vehículo:</strong> <p>${vehiculoInfo ? `${vehiculoInfo.Patente} - ${vehiculoInfo.Marca} ${vehiculoInfo.Modelo}` : 'N/A'}</p></div>
+                        <div class="full-width"><strong>Ruta Detallada:</strong> <p>${viaje.RutaDetallada || 'Seguir ruta sugerida por GPS.'}</p></div>
+                    </div>
                 </div>
-                <div class="trip-card-footer">
+                <div class="trip-card-footer-chofer">
+                    <button class="btn-map btn-open-gmaps" data-origen="${viaje.Origen}" data-destino="${viaje.Destino}">
+                        🗺️ Abrir Mapa
+                    </button>
                     ${actionButton}
                 </div>
             </div>
         `;
     }).join('');
 
-    // Re-asignamos el event listener al contenedor
-    // (Es una buena práctica hacerlo después de regenerar el HTML)
-    tripListContainer.removeEventListener('click', handleChoferActions); // Limpiamos el anterior
-    tripListContainer.addEventListener('click', handleChoferActions); // Añadimos el nuevo
+    tripListContainer.removeEventListener('click', handleChoferActions);
+    tripListContainer.addEventListener('click', handleChoferActions);
 }
 
 
 /**
  * Manejador para los botones de la vista del chofer.
  */
-async function handleChoferActions(event) {
+/**async function handleChoferActions(event) {
     const user = JSON.parse(sessionStorage.getItem('user'));
     
     const startButton = event.target.closest('.btn-start');
@@ -842,6 +850,48 @@ async function handleChoferActions(event) {
     }
 }
 
+async function handleChoferActions(event) {
+    const user = JSON.parse(sessionStorage.getItem('user'));
+    
+    const startButton = event.target.closest('.btn-start');
+    const endButton = event.target.closest('.btn-end');
+    const pdfButton = event.target.closest('.btn-pdf');
+    const gmapsButton = event.target.closest('.btn-open-gmaps');
+
+    // --- Lógica para el botón INICIAR ---
+    if (startButton) {
+        const tripId = startButton.dataset.id;
+        if (!confirm(`¿Estás seguro de que quieres iniciar este viaje?`)) return;
+        try {
+            alert("Obteniendo tu ubicación...");
+            const location = await getCurrentLocation();
+            const result = await callApi('logTripEvent', { viajeId: tripId, choferId: user.choferId, tipoLog: 'INICIO', ubicacion: location });
+            if (result) { alert(result); initChoferView(); }
+        } catch (error) { alert(`Error: ${error}`); }
+        return;
+    }
+
+    // --- Lógica para el botón FINALIZAR ---
+    if (endButton) {
+        openSignatureModal(endButton.dataset.id);
+        return;
+    }
+
+    // --- Lógica para el botón PDF ---
+    if (pdfButton) {
+        generateTripPDF(pdfButton.dataset.id);
+        return;
+    }
+    
+    // --- Lógica para el botón GOOGLE MAPS ---
+    if (gmapsButton) {
+        const origen = gmapsButton.dataset.origen;
+        const destino = gmapsButton.dataset.destino;
+        const gmapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origen)}&destination=${encodeURIComponent(destino)}`;
+        window.open(gmapsUrl, '_blank');
+        return;
+    }
+}
 /**
  * Carga y muestra la lista de usuarios del sistema.
  */

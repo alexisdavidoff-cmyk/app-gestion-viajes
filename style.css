@@ -695,3 +695,88 @@ body {
     align-items: center;
     font-size: 1.2rem;
 }
+/* Estilos para la nueva tarjeta detallada del chofer */
+.trip-card-detailed {
+    background: var(--white);
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    border-left: 5px solid;
+    margin-bottom: 1.5rem;
+}
+
+.trip-card-detailed .trip-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.trip-card-detailed .trip-card-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: var(--dark-gray);
+}
+
+.trip-card-detailed .trip-card-body {
+    padding: 1rem;
+}
+
+.trip-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.trip-info-grid .full-width {
+    grid-column: 1 / -1;
+}
+
+.trip-info-grid div > strong {
+    font-size: 0.8rem;
+    color: #6c757d;
+    display: block;
+    margin-bottom: 0.2rem;
+}
+
+.trip-info-grid div > p {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.trip-card-footer-chofer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background-color: #f0f0f0;
+    overflow: hidden;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.trip-card-footer-chofer button {
+    background-color: var(--white);
+    border: none;
+    padding: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.trip-card-footer-chofer button:hover {
+    background-color: #f8f8f8;
+}
+
+.trip-card-footer-chofer .btn-map {
+    color: var(--primary-color);
+}
+.trip-card-footer-chofer .btn-start { color: var(--success-color); }
+.trip-card-footer-chofer .btn-end { color: var(--danger-color); }
+.trip-card-footer-chofer .btn-pdf { color: var(--primary-color); }
+
+.no-trips-card {
+    background: var(--white);
+    padding: 2rem;
+    border-radius: 8px;
+    text-align: center;
+    color: #6c757d;
+}
