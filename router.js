@@ -272,6 +272,8 @@ const subViews = {
                             <th>CUIT / DNI</th>
                             <th>Dirección</th>
                             <th>Contacto</th>
+                            <th>Email</th>
+                            <th>Teléfono</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>

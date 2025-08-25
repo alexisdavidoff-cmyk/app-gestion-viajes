@@ -780,3 +780,9 @@ body {
     text-align: center;
     color: #6c757d;
 }
+.clickable-row {
+    cursor: pointer;
+}
+.clickable-row:hover {
+    background-color: #f8f9fa;
+}

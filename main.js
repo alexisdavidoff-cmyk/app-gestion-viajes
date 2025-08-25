@@ -164,6 +164,16 @@ function handleViewContentClick(event) {
         openUsuarioModal(userId); // Llama a la función con un ID para editar
     }
 
+    // >>> AÑADE ESTA LÓGICA PARA EL CLIC EN LA FILA <<<
+    const clickedRow = event.target.closest('.clickable-row');
+    // Nos aseguramos de no activar esto si se hizo clic en un botón dentro de la fila
+    const isActionButton = event.target.closest('.btn-icon'); 
+
+    if (clickedRow && !isActionButton) {
+        const tripId = clickedRow.dataset.id;
+        openViajeDetailsModal(tripId);
+    }
+
     // >>> AÑADE ESTA LÓGICA NUEVA PARA CHOFERES <<<
     const nuevoChoferButton = event.target.closest('#btn-nuevo-chofer');
     if (nuevoChoferButton) {
@@ -227,6 +237,8 @@ function handleViewContentClick(event) {
         // Abrimos la URL en una nueva pestaña
         window.open(gmapsUrl, '_blank');
     }
+
+
 }
 
     // Aquí se añadiría la lógica para otros botones (editar, eliminar, etc.)
@@ -262,10 +274,14 @@ async function loadViajesTable() {
 
     viajes.forEach(viaje => {
         const row = document.createElement('tr');
+        // >>> AÑADIMOS data-id A LA FILA Y LA HACEMOS CLICABLE <<<
+        row.dataset.id = viaje.ID;
+        row.classList.add('clickable-row');
+        
         const origen = viaje.Origen;
         const destino = viaje.Destino;
         row.innerHTML = `
-            <td>${(viaje.ID || '').substring(0, 8)}...</td>
+            <td>${viaje.IDViajeLegible || 'N/A'}</td>
             <td>${clientesMap.get(viaje.ClienteID) || 'N/A'}</td>
             <td>${choferesMap.get(viaje.ChoferID) || 'N/A'}</td>
             <td>${viaje.Origen}</td>
@@ -292,65 +308,6 @@ async function loadViajesTable() {
 }
 
 // --- LÓGICA DEL MODAL DE CREAR VIAJE ---
-
-/**
- * Obtiene los datos necesarios, construye y muestra el modal para crear un viaje.
- */
-/**async function openCrearViajeModal() {
-    const modalContainer = document.getElementById('modal-container');
-
-    const [clientes, choferes, vehiculos] = await Promise.all([
-        callApi('getRecords', { sheetName: 'Clientes' }),
-        callApi('getRecords', { sheetName: 'Choferes' }),
-        callApi('getRecords', { sheetName: 'Vehiculos' })
-    ]);
-
-    const clientesOptions = clientes.map(c => `<option value="${c.ID}">${c.RazonSocial}</option>`).join('');
-    const choferesOptions = choferes.filter(c => c.Estado === 'Activo').map(c => `<option value="${c.ID}">${c.Nombre}</option>`).join('');
-    const vehiculosOptions = vehiculos.filter(v => v.Estado === 'Activo').map(v => `<option value="${v.ID}">${v.Patente} - ${v.Marca} ${v.Modelo}</option>`).join('');
-
-    modalContainer.innerHTML = `
-        <div class="modal-overlay visible">
-            <div class="modal">
-                <div class="modal-header">
-                    <h3>Crear Nuevo Viaje</h3>
-                    <button class="modal-close-btn">&times;</button>
-                </div>
-                <form id="form-crear-viaje">
-                    <div class="modal-body">
-                        <h4>Datos Principales</h4>
-                        <div class="form-grid">
-                            <div class="form-group"><label for="cliente">Cliente</label><select id="cliente" required>${clientesOptions}</select></div>
-                            <div class="form-group"><label for="chofer">Chofer</label><select id="chofer" required>${choferesOptions}</select></div>
-                            <div class="form-group"><label for="vehiculo">Vehículo</label><select id="vehiculo" required>${vehiculosOptions}</select></div>
-                            <div class="form-group"><label for="origen">Origen</label><input type="text" id="origen" required></div>
-                            <div class="form-group"><label for="destino">Destino</label><input type="text" id="destino" required></div>
-                            <div class="form-group"><label for="fechaSalida">Fecha y Hora de Salida</label><input type="datetime-local" id="fechaSalida" required></div>
-                        </div>
-                        <div class="checklist-section">
-                            <h4>Checklist de Riesgos</h4>
-                            <div class="form-group"><label for="riesgo-clima">Condiciones climáticas</label><select id="riesgo-clima" class="riesgo-input"><option value="bajo">Despejado</option><option value="medio">Lluvia leve / Viento</option><option value="alto">Tormenta / Nieve / Niebla densa</option></select></div>
-                            <div class="form-group"><label for="riesgo-distancia">Distancia del viaje</label><select id="riesgo-distancia" class="riesgo-input"><option value="bajo">Menos de 200km</option><option value="medio">Entre 200km y 600km</option><option value="alto">Más de 600km</option></select></div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn-secondary modal-close-btn">Cancelar</button>
-                        <button type="submit" class="btn-primary">Guardar Viaje</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    `;
-
-    const overlay = modalContainer.querySelector('.modal-overlay');
-    overlay.querySelectorAll('.modal-close-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            overlay.classList.remove('visible');
-        });
-    });
-
-    document.getElementById('form-crear-viaje').addEventListener('submit', handleViajeFormSubmit);
-}
 
 /**
  * Maneja el envío del formulario del modal, recolectando datos y enviándolos a la API.
@@ -480,52 +437,22 @@ async function openCrearViajeModal() {
     document.getElementById('form-crear-viaje').addEventListener('submit', handleViajeFormSubmit);
 }
 
-/**async function handleViajeFormSubmit(e) {
-    e.preventDefault();
-
-    const viajeData = {
-        ClienteID: document.getElementById('cliente').value,
-        ChoferID: document.getElementById('chofer').value,
-        VehiculoID: document.getElementById('vehiculo').value,
-        Origen: document.getElementById('origen').value,
-        Destino: document.getElementById('destino').value,
-        FechaHoraSalida: document.getElementById('fechaSalida').value,
-        Estado: 'Pendiente',
-    };
-
-    const riesgoInputs = document.querySelectorAll('.riesgo-input');
-    let nivelesRiesgo = Array.from(riesgoInputs).map(input => input.value);
-    
-    if (nivelesRiesgo.includes('alto')) {
-        viajeData.RiesgoCalculado = 'Alto';
-    } else if (nivelesRiesgo.includes('medio')) {
-        viajeData.RiesgoCalculado = 'Medio';
-    } else {
-        viajeData.RiesgoCalculado = 'Bajo';
-    }
-    
-    const result = await callApi('createRecord', {
-        sheetName: 'Viajes',
-        data: viajeData
-    });
-
-    if (result) {
-        alert('Viaje creado exitosamente!');
-        document.querySelector('.modal-overlay').classList.remove('visible');
-        loadViajesTable(); // Refrescar la tabla para ver el nuevo viaje
-    }
+async function openViajeDetailsModal(tripId) {
+    // (Esta función será grande. Recopilará todos los datos como hicimos para el PDF
+    // y los mostrará en un modal bien formateado).
+    // Por ahora, pondremos un placeholder:
+    alert(`Se abrirán los detalles para el viaje con ID interno: ${tripId}`);
 }
 
-// >>> AÑADE ESTAS DOS NUEVAS FUNCIONES AL FINAL DEL ARCHIVO <<<
 
-/**
- * Carga y muestra los viajes pendientes de aprobación para el supervisor actual.
- */
+
 /**
  * Maneja el envío del nuevo formulario de viaje detallado.
  */
 async function handleViajeFormSubmit(e) {
     e.preventDefault();
+    const user = JSON.parse(sessionStorage.getItem('user')); // Obtener el usuario actual
+
 
     // 1. Recolectar datos básicos
     const viajeData = {
@@ -538,7 +465,9 @@ async function handleViajeFormSubmit(e) {
         FechaHoraFinEstimada: document.getElementById('fechaFin').value,
         Proposito: document.getElementById('proposito').value,
         RutaDetallada: document.getElementById('ruta').value,
-        Estado: 'Pendiente'
+        Estado: 'Pendiente',
+        // >>> AÑADIMOS EL DATO DE AUDITORÍA <<<
+        UsuarioCreadorID: user.id 
     };
     
     // 2. Recolectar checklist de seguridad
@@ -1315,6 +1244,8 @@ async function loadClientesView() {
     const clientes = await callApi('getRecords', { sheetName: 'Clientes' });
     if (!clientes) return;
 
+
+
     const tableBody = document.querySelector('#clientes-table tbody');
     tableBody.innerHTML = '';
 
@@ -1325,6 +1256,8 @@ async function loadClientesView() {
             <td>${cliente.CUIT_DNI}</td>
             <td>${cliente.Direccion}</td>
             <td>${cliente.Contacto}</td>
+            <td>${cliente.Email || 'N/A'}</td>    
+            <td>${cliente.Telefono || 'N/A'}</td> 
             <td class="actions">
                 <button class="btn-icon edit btn-edit-cliente" data-id="${cliente.ID}" title="Editar Cliente">✏️</button>
                 <button class="btn-icon delete btn-delete-cliente" data-id="${cliente.ID}" title="Eliminar Cliente">🗑️</button>
@@ -1362,7 +1295,7 @@ async function openClienteModal(clienteId = null) {
 
     const modalContainer = document.getElementById('modal-container');
     modalContainer.innerHTML = `
-        <div class="modal-overlay visible"><div class="modal">
+        <div class="modal-overlay visible"><div class="modal modal-lg">
             <div class="modal-header"><h3>${isEditing ? 'Editar' : 'Crear'} Cliente</h3><button class="modal-close-btn">&times;</button></div>
             <form id="form-cliente">
                 <input type="hidden" id="clienteId" value="${clienteData.ID || ''}">
@@ -1370,7 +1303,9 @@ async function openClienteModal(clienteId = null) {
                     <div class="form-group"><label for="razonSocial">Razón Social / Nombre</label><input type="text" id="razonSocial" required value="${clienteData.RazonSocial || ''}"></div>
                     <div class="form-group"><label for="cuitDni">CUIT / DNI</label><input type="text" id="cuitDni" required value="${clienteData.CUIT_DNI || ''}"></div>
                     <div class="form-group"><label for="direccion">Dirección</label><input type="text" id="direccion" value="${clienteData.Direccion || ''}"></div>
-                    <div class="form-group"><label for="contacto">Contacto (Email/Teléfono)</label><input type="text" id="contacto" value="${clienteData.Contacto || ''}"></div>
+                    <div class="form-group"><label for="contacto">Persona de Contacto</label><input type="text" id="contacto" value="${clienteData.Contacto || ''}"></div>
+                    <div class="form-group"><label>Email</label><input type="email" id="email" value="${clienteData.Email || ''}"></div>
+                    <div class="form-group"><label>Teléfono</label><input type="tel" id="telefono" value="${clienteData.Telefono || ''}"></div>
                 </div></div>
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary modal-close-btn">Cancelar</button>
@@ -1399,6 +1334,8 @@ async function handleClienteFormSubmit(e) {
         CUIT_DNI: document.getElementById('cuitDni').value,
         Direccion: document.getElementById('direccion').value,
         Contacto: document.getElementById('contacto').value,
+        Email: document.getElementById('email').value,         // Campo Añadido
+        Telefono: document.getElementById('telefono').value,   // Campo Añadido
     };
 
     let result;
