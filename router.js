@@ -224,7 +224,64 @@ const subViews = {
                 </table>
             </div>
         `
+    },
+    '/vehiculos': {
+        title: 'Gestión de Vehículos',
+        template: `
+            <div class="view-header">
+                <button id="btn-nuevo-vehiculo" class="btn-primary">
+                    <span>+ Nuevo Vehículo</span>
+                </button>
+            </div>
+            <div class="table-container">
+                <table id="vehiculos-table">
+                    <thead>
+                        <tr>
+                            <th>Patente</th>
+                            <th>Marca</th>
+                            <th>Modelo</th>
+                            <th>Año</th>
+                            <th>Vencimiento VTV</th>
+                            <th>Vencimiento Seguro</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Las filas de vehículos se insertarán aquí -->
+                    </tbody>
+                </table>
+            </div>
+        `
+    },
+
+    '/clientes': {
+        title: 'Gestión de Clientes',
+        template: `
+            <div class="view-header">
+                <button id="btn-nuevo-cliente" class="btn-primary">
+                    <span>+ Nuevo Cliente</span>
+                </button>
+            </div>
+            <div class="table-container">
+                <table id="clientes-table">
+                    <thead>
+                        <tr>
+                            <th>Razón Social / Nombre</th>
+                            <th>CUIT / DNI</th>
+                            <th>Dirección</th>
+                            <th>Contacto</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Las filas de clientes se insertarán aquí -->
+                    </tbody>
+                </table>
+            </div>
+        `
     }
+
 
 
     // ... más vistas si las hubiera ...

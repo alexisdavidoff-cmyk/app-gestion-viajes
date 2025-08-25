@@ -110,6 +110,8 @@ function loadSubView(path) {
                 break;
             case '/usuarios': loadUsuariosView(); break;
             case '/choferes': loadChoferesView(); break;
+            case '/vehiculos': loadVehiculosView(); break;
+            case '/clientes': loadClientesView(); break;
     }
             // Aquí irían los casos para otras vistas (choferes, vehículos, etc.)
         
@@ -172,6 +174,39 @@ function handleViewContentClick(event) {
     if (borrarChoferButton) {
         handleDeleteChofer(borrarChoferButton.dataset.id);
     }
+
+    // >>> AÑADE ESTA LÓGICA NUEVA PARA VEHÍCULOS <<<
+    const nuevoVehiculoButton = event.target.closest('#btn-nuevo-vehiculo');
+    if (nuevoVehiculoButton) {
+        openVehiculoModal();
+    }
+    
+    const editarVehiculoButton = event.target.closest('.btn-edit-vehiculo');
+    if (editarVehiculoButton) {
+        openVehiculoModal(editarVehiculoButton.dataset.id);
+    }
+    
+    const borrarVehiculoButton = event.target.closest('.btn-delete-vehiculo');
+    if (borrarVehiculoButton) {
+        handleDeleteVehiculo(borrarVehiculoButton.dataset.id);
+    }
+
+    // >>> AÑADE ESTA LÓGICA NUEVA PARA CLIENTES <<<
+    const nuevoClienteButton = event.target.closest('#btn-nuevo-cliente');
+    if (nuevoClienteButton) {
+        openClienteModal();
+    }
+    
+    const editarClienteButton = event.target.closest('.btn-edit-cliente');
+    if (editarClienteButton) {
+        openClienteModal(editarClienteButton.dataset.id);
+    }
+    
+    const borrarClienteButton = event.target.closest('.btn-delete-cliente');
+    if (borrarClienteButton) {
+        handleDeleteCliente(borrarClienteButton.dataset.id);
+    }
+
 
 }
     // Aquí se añadiría la lógica para otros botones (editar, eliminar, etc.)
@@ -480,7 +515,7 @@ async function initChoferView() {
     }
 
     tripListContainer.innerHTML = misViajes.map(viaje => `
-        <div class="trip-card status-${viaje.Estado.toLowerCase()}">
+        <div class="trip-card status-${viaje.Estado.toLowerCase()}" data-id="${viaje.ID}">
             <div class="trip-card-header">
                 <strong>Cliente:</strong> ${clientesMap.get(viaje.ClienteID) || 'N/A'}
             </div>
@@ -500,6 +535,7 @@ async function initChoferView() {
 
     // Delegación de eventos para los botones de acción
     tripListContainer.addEventListener('click', handleChoferActions);
+
 }
 
 /**
@@ -510,10 +546,19 @@ async function handleChoferActions(event) {
     const startButton = event.target.closest('.btn-start');
     const endButton = event.target.closest('.btn-end');
 
-    if (!startButton && !endButton) return;
-
+    
+    if (startButton) {
     const tripId = startButton ? startButton.dataset.id : endButton.dataset.id;
     const actionType = startButton ? 'INICIO' : 'FIN';
+    } else if (endButton) {
+        const tripId = endButton.dataset.id;
+        // En lugar de finalizar directamente, abrimos el modal de firma
+        openSignatureModal(tripId);
+    } else if (card) {
+        // Si se hizo clic en la tarjeta (y no en un botón), mostramos los detalles
+        const tripId = card.dataset.id;
+        openTripDetailsModal(tripId);
+    }
     
     if (!confirm(`¿Estás seguro de que quieres ${actionType === 'INICIO' ? 'iniciar' : 'finalizar'} este viaje?`)) return;
 
@@ -837,4 +882,333 @@ async function handleChoferFormSubmit(e) {
         document.querySelector('.modal-overlay').classList.remove('visible');
         loadChoferesView();
     }
+}
+
+/**
+ * Carga y muestra la lista de vehículos.
+ */
+async function loadVehiculosView() {
+    const vehiculos = await callApi('getRecords', { sheetName: 'Vehiculos' });
+    if (!vehiculos) return;
+
+    const tableBody = document.querySelector('#vehiculos-table tbody');
+    tableBody.innerHTML = '';
+
+    vehiculos.forEach(vehiculo => {
+        const row = document.createElement('tr');
+        const estadoClass = String(vehiculo.Estado).toLowerCase();
+        row.innerHTML = `
+            <td>${vehiculo.Patente}</td>
+            <td>${vehiculo.Marca}</td>
+            <td>${vehiculo.Modelo}</td>
+            <td>${vehiculo.Ano}</td>
+            <td>${vehiculo.VencimientoVTV ? new Date(vehiculo.VencimientoVTV).toLocaleDateString() : ''}</td>
+            <td>${vehiculo.VencimientoSeguro ? new Date(vehiculo.VencimientoSeguro).toLocaleDateString() : ''}</td>
+            <td><span class="status ${estadoClass}">${vehiculo.Estado}</span></td>
+            <td class="actions">
+                <button class="btn-icon edit btn-edit-vehiculo" data-id="${vehiculo.ID}" title="Editar Vehículo">✏️</button>
+                <button class="btn-icon delete btn-delete-vehiculo" data-id="${vehiculo.ID}" title="Eliminar Vehículo">🗑️</button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+/**
+ * Maneja la eliminación de un vehículo.
+ */
+async function handleDeleteVehiculo(vehiculoId) {
+    if (!confirm("¿Estás seguro de que quieres eliminar este vehículo?")) {
+        return;
+    }
+    const result = await callApi('deleteRecord', { sheetName: 'Vehiculos', id: vehiculoId });
+    if (result) {
+        alert(result);
+        loadVehiculosView();
+    }
+}
+
+/**
+ * Abre un modal para crear o editar un vehículo.
+ */
+async function openVehiculoModal(vehiculoId = null) {
+    const isEditing = Boolean(vehiculoId);
+    let vehiculoData = {};
+
+    if (isEditing) {
+        const vehiculos = await callApi('getRecords', { sheetName: 'Vehiculos' });
+        vehiculoData = vehiculos.find(v => v.ID === vehiculoId);
+    }
+
+    const modalContainer = document.getElementById('modal-container');
+    modalContainer.innerHTML = `
+        <div class="modal-overlay visible"><div class="modal">
+            <div class="modal-header"><h3>${isEditing ? 'Editar' : 'Crear'} Vehículo</h3><button class="modal-close-btn">&times;</button></div>
+            <form id="form-vehiculo">
+                <input type="hidden" id="vehiculoId" value="${vehiculoData.ID || ''}">
+                <div class="modal-body"><div class="form-grid">
+                    <div class="form-group"><label for="patente">Patente</label><input type="text" id="patente" required value="${vehiculoData.Patente || ''}"></div>
+                    <div class="form-group"><label for="marca">Marca</label><input type="text" id="marca" required value="${vehiculoData.Marca || ''}"></div>
+                    <div class="form-group"><label for="modelo">Modelo</label><input type="text" id="modelo" required value="${vehiculoData.Modelo || ''}"></div>
+                    <div class="form-group"><label for="ano">Año</label><input type="number" id="ano" required value="${vehiculoData.Ano || ''}"></div>
+                    <div class="form-group"><label for="vencimientoVtv">Vencimiento VTV</label><input type="date" id="vencimientoVtv" value="${vehiculoData.VencimientoVTV || ''}"></div>
+                    <div class="form-group"><label for="vencimientoSeguro">Vencimiento Seguro</label><input type="date" id="vencimientoSeguro" value="${vehiculoData.VencimientoSeguro || ''}"></div>
+                    <div class="form-group"><label for="estado">Estado</label><select id="estado" required><option value="Activo" ${vehiculoData.Estado === 'Activo' ? 'selected' : ''}>Activo</option><option value="Inactivo" ${vehiculoData.Estado === 'Inactivo' ? 'selected' : ''}>Inactivo</option></select></div>
+                </div></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary modal-close-btn">Cancelar</button>
+                    <button type="submit" class="btn-primary">${isEditing ? 'Guardar Cambios' : 'Crear Vehículo'}</button>
+                </div>
+            </form>
+        </div></div>
+    `;
+    
+    // Lógica para cerrar el modal
+    const overlay = modalContainer.querySelector('.modal-overlay');
+    overlay.querySelectorAll('.modal-close-btn').forEach(btn => btn.addEventListener('click', () => overlay.classList.remove('visible')));
+    document.getElementById('form-vehiculo').addEventListener('submit', handleVehiculoFormSubmit);
+}
+
+/**
+ * Maneja el envío del formulario de vehículo.
+ */
+async function handleVehiculoFormSubmit(e) {
+    e.preventDefault();
+    const vehiculoId = document.getElementById('vehiculoId').value;
+    const isEditing = Boolean(vehiculoId);
+
+    const vehiculoData = {
+        Patente: document.getElementById('patente').value,
+        Marca: document.getElementById('marca').value,
+        Modelo: document.getElementById('modelo').value,
+        Ano: document.getElementById('ano').value,
+        VencimientoVTV: document.getElementById('vencimientoVtv').value,
+        VencimientoSeguro: document.getElementById('vencimientoSeguro').value,
+        Estado: document.getElementById('estado').value,
+    };
+
+    let result;
+    if (isEditing) {
+        result = await callApi('updateRecord', { sheetName: 'Vehiculos', id: vehiculoId, data: vehiculoData });
+    } else {
+        result = await callApi('createRecord', { sheetName: 'Vehiculos', data: vehiculoData });
+    }
+
+    if (result) {
+        alert(result);
+        document.querySelector('.modal-overlay').classList.remove('visible');
+        loadVehiculosView();
+    }
+}
+
+/**
+ * Carga y muestra la lista de clientes.
+ */
+async function loadClientesView() {
+    const clientes = await callApi('getRecords', { sheetName: 'Clientes' });
+    if (!clientes) return;
+
+    const tableBody = document.querySelector('#clientes-table tbody');
+    tableBody.innerHTML = '';
+
+    clientes.forEach(cliente => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${cliente.RazonSocial}</td>
+            <td>${cliente.CUIT_DNI}</td>
+            <td>${cliente.Direccion}</td>
+            <td>${cliente.Contacto}</td>
+            <td class="actions">
+                <button class="btn-icon edit btn-edit-cliente" data-id="${cliente.ID}" title="Editar Cliente">✏️</button>
+                <button class="btn-icon delete btn-delete-cliente" data-id="${cliente.ID}" title="Eliminar Cliente">🗑️</button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+/**
+ * Maneja la eliminación de un cliente.
+ */
+async function handleDeleteCliente(clienteId) {
+    if (!confirm("¿Estás seguro de que quieres eliminar este cliente?")) {
+        return;
+    }
+    const result = await callApi('deleteRecord', { sheetName: 'Clientes', id: clienteId });
+    if (result) {
+        alert(result);
+        loadClientesView();
+    }
+}
+
+/**
+ * Abre un modal para crear o editar un cliente.
+ */
+async function openClienteModal(clienteId = null) {
+    const isEditing = Boolean(clienteId);
+    let clienteData = {};
+
+    if (isEditing) {
+        const clientes = await callApi('getRecords', { sheetName: 'Clientes' });
+        clienteData = clientes.find(c => c.ID === clienteId);
+    }
+
+    const modalContainer = document.getElementById('modal-container');
+    modalContainer.innerHTML = `
+        <div class="modal-overlay visible"><div class="modal">
+            <div class="modal-header"><h3>${isEditing ? 'Editar' : 'Crear'} Cliente</h3><button class="modal-close-btn">&times;</button></div>
+            <form id="form-cliente">
+                <input type="hidden" id="clienteId" value="${clienteData.ID || ''}">
+                <div class="modal-body"><div class="form-grid">
+                    <div class="form-group"><label for="razonSocial">Razón Social / Nombre</label><input type="text" id="razonSocial" required value="${clienteData.RazonSocial || ''}"></div>
+                    <div class="form-group"><label for="cuitDni">CUIT / DNI</label><input type="text" id="cuitDni" required value="${clienteData.CUIT_DNI || ''}"></div>
+                    <div class="form-group"><label for="direccion">Dirección</label><input type="text" id="direccion" value="${clienteData.Direccion || ''}"></div>
+                    <div class="form-group"><label for="contacto">Contacto (Email/Teléfono)</label><input type="text" id="contacto" value="${clienteData.Contacto || ''}"></div>
+                </div></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary modal-close-btn">Cancelar</button>
+                    <button type="submit" class="btn-primary">${isEditing ? 'Guardar Cambios' : 'Crear Cliente'}</button>
+                </div>
+            </form>
+        </div></div>
+    `;
+    
+    // Lógica para cerrar el modal
+    const overlay = modalContainer.querySelector('.modal-overlay');
+    overlay.querySelectorAll('.modal-close-btn').forEach(btn => btn.addEventListener('click', () => overlay.classList.remove('visible')));
+    document.getElementById('form-cliente').addEventListener('submit', handleClienteFormSubmit);
+}
+
+/**
+ * Maneja el envío del formulario de cliente.
+ */
+async function handleClienteFormSubmit(e) {
+    e.preventDefault();
+    const clienteId = document.getElementById('clienteId').value;
+    const isEditing = Boolean(clienteId);
+
+    const clienteData = {
+        RazonSocial: document.getElementById('razonSocial').value,
+        CUIT_DNI: document.getElementById('cuitDni').value,
+        Direccion: document.getElementById('direccion').value,
+        Contacto: document.getElementById('contacto').value,
+    };
+
+    let result;
+    if (isEditing) {
+        result = await callApi('updateRecord', { sheetName: 'Clientes', id: clienteId, data: clienteData });
+    } else {
+        result = await callApi('createRecord', { sheetName: 'Clientes', data: clienteData });
+    }
+
+    if (result) {
+        alert(result);
+        document.querySelector('.modal-overlay').classList.remove('visible');
+        loadClientesView();
+    }
+}
+/**
+ * Abre un modal con los detalles completos de un viaje.
+ * @param {string} tripId - El ID del viaje a mostrar.
+ */
+async function openTripDetailsModal(tripId) {
+    const [viajes, clientes, vehiculos] = await Promise.all([
+        callApi('getRecords', { sheetName: 'Viajes' }),
+        callApi('getRecords', { sheetName: 'Clientes' }),
+        callApi('getRecords', { sheetName: 'Vehiculos' })
+    ]);
+
+    const viaje = viajes.find(v => v.ID === tripId);
+    if (!viaje) { alert("No se encontraron los detalles del viaje."); return; }
+
+    const cliente = clientes.find(c => c.ID === viaje.ClienteID);
+    const vehiculo = vehiculos.find(v => v.ID === viaje.VehiculoID);
+
+    const modalContainer = document.getElementById('modal-container');
+    modalContainer.innerHTML = `
+        <div class="modal-overlay visible"><div class="modal">
+            <div class="modal-header"><h3>Detalles del Viaje</h3><button class="modal-close-btn">&times;</button></div>
+            <div class="modal-body">
+                <h4>Cliente y Ruta</h4>
+                <p><strong>Cliente:</strong> ${cliente ? cliente.RazonSocial : 'N/A'}</p>
+                <p><strong>Origen:</strong> ${viaje.Origen}</p>
+                <p><strong>Destino:</strong> ${viaje.Destino}</p>
+                <p><strong>Fecha de Salida:</strong> ${new Date(viaje.FechaHoraSalida).toLocaleString()}</p>
+                
+                <h4 style="margin-top: 1.5rem;">Vehículo Asignado</h4>
+                <p><strong>Patente:</strong> ${vehiculo ? vehiculo.Patente : 'N/A'}</p>
+                <p><strong>Marca/Modelo:</strong> ${vehiculo ? `${vehiculo.Marca} ${vehiculo.Modelo}` : 'N/A'}</p>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary modal-close-btn">Cerrar</button>
+            </div>
+        </div></div>
+    `;
+
+    const overlay = modalContainer.querySelector('.modal-overlay');
+    overlay.querySelectorAll('.modal-close-btn').forEach(btn => btn.addEventListener('click', () => overlay.classList.remove('visible')));
+}
+/**
+ * Abre el modal para que el chofer capture su firma.
+ * @param {string} tripId - El ID del viaje que se está finalizando.
+ */
+function openSignatureModal(tripId) {
+    const modalContainer = document.getElementById('modal-container');
+    modalContainer.innerHTML = `
+        <div class="modal-overlay visible"><div class="modal">
+            <div class="modal-header"><h3>Finalizar Viaje - Firmar Constancia</h3></div>
+            <div class="modal-body" style="text-align: center;">
+                <p>Por favor, firma en el siguiente recuadro:</p>
+                <canvas id="signature-canvas" style="border: 2px solid #ccc; border-radius: 5px;"></canvas>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="clear-signature">Limpiar</button>
+                <button type="button" class="btn-primary" id="save-signature" data-id="${tripId}">Guardar Firma y Finalizar</button>
+            </div>
+        </div></div>
+    `;
+
+    const canvas = document.getElementById('signature-canvas');
+    // Ajustar tamaño del canvas (importante para que funcione en móviles)
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = canvas.parentElement.clientWidth * 0.9;
+    canvas.height = 200;
+
+    const signaturePad = new SignaturePad(canvas);
+
+    document.getElementById('clear-signature').addEventListener('click', () => {
+        signaturePad.clear();
+    });
+
+    document.getElementById('save-signature').addEventListener('click', async (event) => {
+        if (signaturePad.isEmpty()) {
+            return alert("Por favor, proporciona una firma.");
+        }
+        
+        const tripId = event.target.dataset.id;
+        const user = JSON.parse(sessionStorage.getItem('user'));
+        const signatureDataURL = signaturePad.toDataURL(); // Obtiene la imagen en Base64
+        
+        try {
+            alert("Obteniendo tu ubicación final...");
+            const location = await getCurrentLocation();
+            
+            const result = await callApi('logTripEvent', {
+                viajeId: tripId,
+                choferId: user.choferId,
+                tipoLog: 'FIN',
+                ubicacion: location,
+                firmaBase64: signatureDataURL // >>> ¡ENVIAMOS LA FIRMA! <<<
+            });
+
+            if (result) {
+                alert(result);
+                document.querySelector('.modal-overlay').classList.remove('visible');
+                initChoferView(); // Recargar la vista del chofer
+            }
+        } catch (error) {
+            alert(`Error: ${error}`);
+        }
+    });
 }
