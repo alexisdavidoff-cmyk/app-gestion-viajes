@@ -27,6 +27,7 @@ const routes = {
             <aside class="sidebar">
                 <div class="logo">LOGÍSTICA</div>
                 <nav class="menu">
+                    <a href="#/dashboard" data-role="Administrador,Supervisor nivel 1,Supervisor nivel 2,Supervisor nivel 3">Dashboard</a>
                     <a href="#/viajes" data-role="all">Viajes</a>
                     <a href="#/aprobaciones" data-role="Supervisor nivel 1,Supervisor nivel 2,Supervisor nivel 3">Aprobaciones</a>
                     <a href="#/choferes" data-role="Administrador">Choferes</a>
@@ -278,6 +279,39 @@ const subViews = {
                         <!-- Las filas de clientes se insertarán aquí -->
                     </tbody>
                 </table>
+            </div>
+        `
+    },
+    '/dashboard': {
+        title: 'Tablero de Control',
+        template: `
+            <!-- KPIs -->
+            <div class="kpi-grid">
+                <div class="kpi-card"><div class="kpi-value" id="kpi-total">-</div><div class="kpi-label">Viajes Totales</div></div>
+                <div class="kpi-card"><div class="kpi-value" id="kpi-pendiente">-</div><div class="kpi-label">Pendientes Aprob.</div></div>
+                <div class="kpi-card"><div class="kpi-value" id="kpi-en-curso">-</div><div class="kpi-label">En Curso</div></div>
+                <div class="kpi-card"><div class="kpi-value" id="kpi-finalizado">-</div><div class="kpi-label">Finalizados</div></div>
+            </div>
+
+            <!-- Gráficos y Alertas -->
+            <div class="dashboard-grid">
+                <div class="widget-card">
+                    <h3>Viajes por Nivel de Riesgo</h3>
+                    <div class="chart-container">
+                        <canvas id="riesgo-chart"></canvas>
+                    </div>
+                </div>
+                <div class="widget-card">
+                    <h3>Alertas de Vencimientos</h3>
+                    <div id="alertas-container">
+                        <h4>Licencias por Vencer</h4>
+                        <ul id="licencias-list" class="alert-list"><li>Cargando...</li></ul>
+                        <h4>VTV por Vencer</h4>
+                        <ul id="vtvs-list" class="alert-list"><li>Cargando...</li></ul>
+                        <h4>Seguros por Vencer</h4>
+                        <ul id="seguros-list" class="alert-list"><li>Cargando...</li></ul>
+                    </div>
+                </div>
             </div>
         `
     }

@@ -63,7 +63,10 @@ function initDashboard() {
     });
 
     filterMenuByRole(user.rol);
-    loadSubView('/viajes'); // Cargar la vista inicial del dashboard
+    
+    // --- ¡AQUÍ ESTÁ EL CAMBIO CLAVE! ---
+    // Aseguramos que la vista por defecto sea el tablero de control.
+    loadSubView('/dashboard'); 
 }
 
 /**
@@ -101,6 +104,7 @@ function loadSubView(path) {
         
         // Ejecutar la lógica específica de la vista cargada
         switch(path) {
+            case '/dashboard': loadDashboardView(); break; 
             case '/viajes':
                 loadViajesTable();
                 break;
@@ -112,6 +116,7 @@ function loadSubView(path) {
             case '/choferes': loadChoferesView(); break;
             case '/vehiculos': loadVehiculosView(); break;
             case '/clientes': loadClientesView(); break;
+            
     }
             // Aquí irían los casos para otras vistas (choferes, vehículos, etc.)
         
@@ -265,7 +270,7 @@ async function loadViajesTable() {
 /**
  * Obtiene los datos necesarios, construye y muestra el modal para crear un viaje.
  */
-async function openCrearViajeModal() {
+/**async function openCrearViajeModal() {
     const modalContainer = document.getElementById('modal-container');
 
     const [clientes, choferes, vehiculos] = await Promise.all([
@@ -325,7 +330,131 @@ async function openCrearViajeModal() {
  * Maneja el envío del formulario del modal, recolectando datos y enviándolos a la API.
  * @param {Event} e El evento de submit del formulario.
  */
-async function handleViajeFormSubmit(e) {
+/**
+ * Abre el nuevo modal detallado para crear un plan de viaje.
+ * (La funcionalidad de edición la añadiremos después para simplificar).
+ */
+async function openCrearViajeModal() {
+    const modalContainer = document.getElementById('modal-container');
+
+    const [clientes, choferes, vehiculos] = await Promise.all([
+        callApi('getRecords', { sheetName: 'Clientes' }),
+        callApi('getRecords', { sheetName: 'Choferes' }),
+        callApi('getRecords', { sheetName: 'Vehiculos' })
+    ]);
+
+    const clientesOptions = clientes.map(c => `<option value="${c.ID}">${c.RazonSocial}</option>`).join('');
+    const choferesOptions = choferes.filter(c => c.Estado === 'Activo').map(c => `<option value="${c.ID}">${c.Nombre}</option>`).join('');
+    const vehiculosOptions = vehiculos.filter(v => v.Estado === 'Activo').map(v => `<option value="${v.ID}">${v.Patente} - ${v.Marca} ${v.Modelo}</option>`).join('');
+
+    modalContainer.innerHTML = `
+    <div class="modal-overlay visible">
+        <div class="modal modal-lg">
+            <div class="modal-header"><h3>Crear Plan de Viaje</h3><button class="modal-close-btn">&times;</button></div>
+            <form id="form-crear-viaje">
+                <div class="modal-body">
+                    <!-- SECCIÓN 1: INFORMACIÓN GENERAL -->
+                    <div class="form-section">
+                        <h4>1. Información General del Viaje</h4>
+                        <div class="form-grid">
+                            <div class="form-group"><label>Origen</label><input type="text" id="origen" required></div>
+                            <div class="form-group"><label>Destino</label><input type="text" id="destino" required></div>
+                            <div class="form-group"><label>Fecha y Hora de Inicio</label><input type="datetime-local" id="fechaSalida" required></div>
+                            <div class="form-group"><label>Fecha y Hora de Fin (Estimada)</label><input type="datetime-local" id="fechaFin" required></div>
+                            <div class="form-group"><label>Cliente</label><select id="cliente" required>${clientesOptions}</select></div>
+                            <div class="form-group"><label>Chofer</label><select id="chofer" required>${choferesOptions}</select></div>
+                            <div class="form-group"><label>Vehículo</label><select id="vehiculo" required>${vehiculosOptions}</select></div>
+                            <div class="form-group"><label>Propósito del Viaje</label><input type="text" id="proposito" required></div>
+                            <div class="form-group full-width"><label>Ruta a Seguir</label><textarea id="ruta" rows="2"></textarea></div>
+                        </div>
+                    </div>
+                    
+                    <!-- SECCIÓN 2: CHECKLIST DE SEGURIDAD -->
+                    <div class="form-section">
+                        <h4>2. Checklist de Seguridad del Vehículo</h4>
+                        <div class="checklist-grid security-checklist">
+                            <label><input type="checkbox" name="seguridad" value="tarjeta_verde"> Tarjeta Verde</label>
+                            <label><input type="checkbox" name="seguridad" value="licencia"> Licencia de Conducir</label>
+                            <label><input type="checkbox" name="seguridad" value="dni"> DNI</label>
+                            <label><input type="checkbox" name="seguridad" value="vtv"> VTV</label>
+                            <label><input type="checkbox" name="seguridad" value="seguro"> Seguro Automotor</label>
+                            <label><input type="checkbox" name="seguridad" value="matafuegos"> Matafuegos</label>
+                            <label><input type="checkbox" name="seguridad" value="botiquin"> Botiquín</label>
+                            <label><input type="checkbox" name="seguridad" value="triangulo_chaleco"> Triángulo y Chaleco</label>
+                            <label><input type="checkbox" name="seguridad" value="rueda_auxilio"> Rueda de Auxilio</label>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN 3: ANÁLISIS DE RIESGOS -->
+                    <div class="form-section">
+                        <h4>3. Análisis de Riesgos</h4>
+                        <div class="riesgo-grid">
+                            <div class="riesgo-group">
+                                <h5>A. Distancia</h5>
+                                <label><input type="radio" name="distancia" data-points="1" required> Menor a 50km <span class="pts">1pts</span></label>
+                                <label><input type="radio" name="distancia" data-points="2"> Menor a 100km <span class="pts">2pts</span></label>
+                                <label><input type="radio" name="distancia" data-points="3"> Menor a 200km <span class="pts">3pts</span></label>
+                                <label><input type="radio" name="distancia" data-points="4"> Más de 200km <span class="pts">4pts</span></label>
+                            </div>
+                            <div class="riesgo-group">
+                                <h5>B. Condiciones de la Ruta</h5>
+                                <label><input type="radio" name="ruta_cond" data-points="1" required> Pavimento en buen estado <span class="pts">1pts</span></label>
+                                <label><input type="radio" name="ruta_cond" data-points="2"> Pavimento en mal estado <span class="pts">2pts</span></label>
+                                <label><input type="radio" name="ruta_cond" data-points="3"> Camino consolidado <span class="pts">3pts</span></label>
+                                <label><input type="radio" name="ruta_cond" data-points="4"> Ripio <span class="pts">4pts</span></label>
+                            </div>
+                            <div class="riesgo-group">
+                                <h5>C. Condiciones Meteorológicas</h5>
+                                <label><input type="radio" name="clima" data-points="1" required> Seco <span class="pts">1pts</span></label>
+                                <label><input type="radio" name="clima" data-points="2"> Viento Fuerte <span class="pts">2pts</span></label>
+                                <label><input type="radio" name="clima" data-points="3"> Lluvia Torrencial <span class="pts">3pts</span></label>
+                                <label><input type="radio" name="clima" data-points="4"> Niebla / Hielo / Nieve <span class="pts">4pts</span></label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- SECCIÓN 4: RESULTADO -->
+                    <div class="form-section">
+                        <h4>4. Resultado del Análisis</h4>
+                        <div class="resultado-box">
+                            <span>Puntaje Total:</span>
+                            <strong id="puntaje-total">0</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary modal-close-btn">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar y Enviar Plan de Viaje</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    `;
+
+    // Lógica para cerrar el modal
+    const overlay = modalContainer.querySelector('.modal-overlay');
+    overlay.querySelectorAll('.modal-close-btn').forEach(btn => btn.addEventListener('click', () => overlay.classList.remove('visible')));
+    
+    // Lógica para el cálculo de puntos
+    const riesgoInputs = modalContainer.querySelectorAll('input[type="radio"][data-points]');
+    riesgoInputs.forEach(input => {
+        input.addEventListener('change', () => {
+            let totalPuntos = 0;
+            const gruposRiesgo = modalContainer.querySelectorAll('.riesgo-group');
+            gruposRiesgo.forEach(grupo => {
+                const checkedInput = grupo.querySelector('input[type="radio"]:checked');
+                if (checkedInput) {
+                    totalPuntos += parseInt(checkedInput.dataset.points, 10);
+                }
+            });
+            document.getElementById('puntaje-total').textContent = totalPuntos;
+        });
+    });
+    
+    document.getElementById('form-crear-viaje').addEventListener('submit', handleViajeFormSubmit);
+}
+
+/**async function handleViajeFormSubmit(e) {
     e.preventDefault();
 
     const viajeData = {
@@ -366,6 +495,73 @@ async function handleViajeFormSubmit(e) {
 /**
  * Carga y muestra los viajes pendientes de aprobación para el supervisor actual.
  */
+/**
+ * Maneja el envío del nuevo formulario de viaje detallado.
+ */
+async function handleViajeFormSubmit(e) {
+    e.preventDefault();
+
+    // 1. Recolectar datos básicos
+    const viajeData = {
+        ClienteID: document.getElementById('cliente').value,
+        ChoferID: document.getElementById('chofer').value,
+        VehiculoID: document.getElementById('vehiculo').value,
+        Origen: document.getElementById('origen').value,
+        Destino: document.getElementById('destino').value,
+        FechaHoraSalida: document.getElementById('fechaSalida').value,
+        FechaHoraFinEstimada: document.getElementById('fechaFin').value,
+        Proposito: document.getElementById('proposito').value,
+        RutaDetallada: document.getElementById('ruta').value,
+        Estado: 'Pendiente'
+    };
+    
+    // 2. Recolectar checklist de seguridad
+    const checklistSeguridad = {};
+    document.querySelectorAll('.security-checklist input:checked').forEach(input => {
+        checklistSeguridad[input.value] = true;
+    });
+    viajeData.ChecklistSeguridad = checklistSeguridad;
+
+    // 3. Recolectar respuestas y calcular puntaje de riesgo
+    const respuestasRiesgos = {};
+    let puntajeTotal = 0;
+    const gruposRiesgo = document.querySelectorAll('.riesgo-group');
+    gruposRiesgo.forEach(grupo => {
+        const checkedInput = grupo.querySelector('input[type="radio"]:checked');
+        if (checkedInput) {
+            const groupName = checkedInput.name;
+            const points = parseInt(checkedInput.dataset.points, 10);
+            const valueText = checkedInput.parentElement.textContent.replace(/\s?\d+pts\s?/, '').trim();
+            
+            respuestasRiesgos[groupName] = { valor: valueText, puntos: points };
+            puntajeTotal += points;
+        }
+    });
+    viajeData.RespuestasRiesgos = respuestasRiesgos;
+    viajeData.PuntajeRiesgo = puntajeTotal;
+
+    // 4. Determinar Nivel de Riesgo basado en el puntaje
+    if (puntajeTotal >= 8) { // Ejemplo: 8 puntos o más es Alto
+        viajeData.RiesgoCalculado = 'Alto';
+    } else if (puntajeTotal >= 5) { // Ejemplo: 5 a 7 puntos es Medio
+        viajeData.RiesgoCalculado = 'Medio';
+    } else { // Menos de 5 es Bajo
+        viajeData.RiesgoCalculado = 'Bajo';
+    }
+    
+    // 5. Enviar a la API
+    const result = await callApi('createRecord', {
+        sheetName: 'Viajes',
+        data: viajeData
+    });
+
+    if (result) {
+        alert(`Viaje creado exitosamente con un nivel de riesgo: ${viajeData.RiesgoCalculado}`);
+        document.querySelector('.modal-overlay').classList.remove('visible');
+        loadViajesTable();
+    }
+}
+
 async function loadAprobacionesView() {
     const user = JSON.parse(sessionStorage.getItem('user'));
     if (!user || !user.rol.startsWith('Supervisor')) {
@@ -1331,4 +1527,85 @@ async function generateTripPDF(tripId) {
         console.error("Error al generar el PDF:", error);
         alert("Hubo un error al generar el PDF. Revisa la consola para más detalles.");
     }
+}
+/**
+ * Carga los datos y renderiza el tablero de control principal.
+ */
+async function loadDashboardView() {
+    const data = await callApi('getDashboardData');
+    if (!data) {
+        document.getElementById('view-content').innerHTML = '<p>No se pudieron cargar los datos del dashboard.</p>';
+        return;
+    }
+
+    renderKPIs(data.kpis);
+    renderRiesgoChart(data.chartData.riesgos);
+    renderAlerts(data.alertas);
+}
+
+/**
+ * Rellena las tarjetas de KPIs con los datos.
+ */
+function renderKPIs(kpis) {
+    document.getElementById('kpi-total').textContent = kpis.total;
+    document.getElementById('kpi-pendiente').textContent = kpis.pendiente;
+    document.getElementById('kpi-en-curso').textContent = kpis.en_curso;
+    document.getElementById('kpi-finalizado').textContent = kpis.finalizado;
+}
+
+/**
+ * Dibuja el gráfico de torta de riesgos usando Chart.js.
+ */
+function renderRiesgoChart(riesgos) {
+    const ctx = document.getElementById('riesgo-chart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Bajo', 'Medio', 'Alto'],
+            datasets: [{
+                label: 'Viajes por Riesgo',
+                data: [riesgos.Bajo, riesgos.Medio, riesgos.Alto],
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(255, 99, 132, 0.7)'
+                ],
+                borderColor: [
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(255, 99, 132, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+}
+
+/**
+ * Rellena la sección de alertas de vencimiento.
+ */
+function renderAlerts(alertas) {
+    const renderList = (listId, items) => {
+        const ul = document.getElementById(listId);
+        ul.innerHTML = '';
+        if (items.length === 0) {
+            ul.innerHTML = '<li>No hay vencimientos próximos.</li>';
+            return;
+        }
+        items.forEach(item => {
+            const li = document.createElement('li');
+            const diasClass = item.dias < 0 ? 'vencido' : 'por-vencer';
+            const diasTexto = item.dias < 0 ? `(Venció hace ${-item.dias} días)` : `(Vence en ${item.dias} días)`;
+            li.innerHTML = `<strong>${item.nombre}</strong> - ${item.fecha} <span class="${diasClass}">${diasTexto}</span>`;
+            ul.appendChild(li);
+        });
+    };
+
+    renderList('licencias-list', alertas.licencias);
+    renderList('vtvs-list', alertas.vtvs);
+    renderList('seguros-list', alertas.seguros);
 }
