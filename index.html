@@ -3,101 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Viajes Logística</title>
+    <title>Gestión de Viajes</title>
     <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="app-container">
-        <!-- BARRA LATERAL IZQUIERDA -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2>🚚 Gestión de Viajes</h2>
-            </div>
-            <nav class="sidebar-nav">
-                <a href="#" class="nav-link" data-view="gestionViajesView">📋 Gestión de Viajes</a>
-                <a href="#" class="nav-link" data-view="aprobacionesView">✅ Aprobaciones</a> 
-                <a href="#" class="nav-link" data-view="gestionUsuariosView">👥 Gestión de Usuarios</a>
-            </nav>
-            <div class="sidebar-footer">
-                <p><strong>alexisc.davidoff@gmail.com</strong></p>
-                <p>Rol: Administrador</p>
-            </div>
-        </aside>
-
-        <!-- CONTENIDO PRINCIPAL DERECHA -->
-        <main class="main-content">
-            <div id="gestionViajesView" class="view-container">
-            <header class="main-header">
-                <h1>Gestión de Viajes</h1>
-                <button class="logout-button">Cerrar Sesión</button>
-            </header>
-
-            <div class="content-wrapper">
-                <div class="tabs">
-                    <button class="tab-button active" id="tabListado">Listado de Viajes</button>
-                    <button class="tab-button" id="tabCrear">Crear Viaje</button>
-                </div>
-
-                <!-- SECCIÓN PARA CREAR VIAJE (inicialmente oculta) -->
-                <section id="crearViajeSection" class="content-section hidden">
-                    <h2>Registrar Nuevo Viaje</h2>
-                    <form id="viajeForm">
-                        <label for="origen">Origen:</label>
-                        <input type="text" id="origen" name="origen" required>
-                        
-                        <label for="destino">Destino:</label>
-                        <input type="text" id="destino" name="destino" required>
-                        
-                        <label for="conductor">Conductor:</label>
-                        <select id="conductor" name="conductor" required>
-                            <option value="" disabled selected>Cargando conductores...</option>
-                        </select>
-                        
-                        <label for="vehiculo">Vehículo (Patente/Unidad):</label>
-                        <select id="vehiculo" name="vehiculo" required>
-                            <option value="" disabled selected>Cargando vehículos...</option>
-                        </select>
-                        
-                        <button type="submit">Guardar Viaje</button>
-                    </form>
-                </section>
-
-                <!-- SECCIÓN PARA LISTAR VIAJES (inicialmente visible) -->
-                <section id="listadoViajesSection" class="content-section">
-                    <h2>Filtros de Búsqueda</h2>
-                    <p>Los filtros de búsqueda se implementarán en la siguiente fase.</p>
-                    <div id="listaViajes">
-                        <!-- La tabla de viajes se cargará aquí -->
-                    </div>
-                </section>
-            </div>
-        </div>
-            <!-- =============================================== -->
-            <!-- NUEVA SECCIÓN: GESTIÓN DE USUARIOS -->
-            <!-- =============================================== -->
-
-            <div id="gestionUsuariosView" class="view-container hidden"> <!-- Oculta por defecto -->
-                <header class="main-header">
-                    <h1>Gestión de Usuarios</h1>
-                    <button class="logout-button">Cerrar Sesión</button>
-                </header>
-
-                <div class="content-wrapper">
-                    <div class="toolbar">
-                        <button id="btnAnadirUsuario" class="btn-primary">Añadir Nuevo Usuario</button>
-                    </div>
-                    <div id="listaUsuarios">
-                        <!-- La tabla de usuarios se cargará aquí -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- =============================================== -->
-            <!--       FIN DE LA NUEVA SECCIÓN                 -->
-            <!-- =============================================== -->
-        </main>
+    <!-- Librerías externas (jsPDF, Google Maps) se añadirán cuando sean necesarias -->
+</head><body>
+    <!-- El spinner se mostrará mientras se realizan las llamadas a la API -->
+    <div id="spinner" class="spinner-overlay" style="display: none;">
+        <div class="spinner"></div>
     </div>
 
-    <script src="app.js"></script>
+    <!-- Contenedor principal donde se cargarán las vistas -->
+    <div id="app-container">
+        <!-- La vista de Login se cargará aquí inicialmente -->
+    </div>
+
+    <!-- Scripts principales de la aplicación -->
+    <script src="api.js"></script>
+    <script src="main.js"></script>
+    <script src="router.js"></script>
+    <script>
+        // Punto de entrada de la aplicación
+        document.addEventListener('DOMContentLoaded', () => {
+            // Inicializa el enrutador para cargar la vista correcta
+            Router.init(); 
+        });
+    </script>
+
+    <!-- Contenedor para modales dinámicos -->
+    <div id="modal-container"></div>
+
+    <!-- Scripts principales de la aplicación -->
+    <script src="api.js"></script>
+<!-- ... resto del archivo ... -->
 </body>
 </html>
