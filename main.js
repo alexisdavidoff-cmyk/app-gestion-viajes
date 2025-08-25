@@ -543,45 +543,48 @@ async function initChoferView() {
  */
 async function handleChoferActions(event) {
     const user = JSON.parse(sessionStorage.getItem('user'));
+    
     const startButton = event.target.closest('.btn-start');
     const endButton = event.target.closest('.btn-end');
+    const card = event.target.closest('.trip-card');
 
-    
+    // --- Lógica para el botón INICIAR ---
     if (startButton) {
-    const tripId = startButton ? startButton.dataset.id : endButton.dataset.id;
-    const actionType = startButton ? 'INICIO' : 'FIN';
-    } else if (endButton) {
+        const tripId = startButton.dataset.id;
+        if (!confirm(`¿Estás seguro de que quieres iniciar este viaje?`)) return;
+
+        try {
+            alert("Obteniendo tu ubicación... por favor, acepta la solicitud del navegador.");
+            const location = await getCurrentLocation();
+            
+            const result = await callApi('logTripEvent', {
+                viajeId: tripId,
+                choferId: user.choferId,
+                tipoLog: 'INICIO', // Usamos el valor directamente
+                ubicacion: location
+            });
+
+            if (result) {
+                alert(result);
+                initChoferView(); // Recargar la lista de viajes
+            }
+        } catch (error) {
+            alert(`Error: ${error}`);
+        }
+        return; // Detenemos la ejecución para no activar el clic de la tarjeta
+    }
+
+    // --- Lógica para el botón FINALIZAR ---
+    if (endButton) {
         const tripId = endButton.dataset.id;
-        // En lugar de finalizar directamente, abrimos el modal de firma
         openSignatureModal(tripId);
-    } else if (card) {
-        // Si se hizo clic en la tarjeta (y no en un botón), mostramos los detalles
+        return; // Detenemos la ejecución
+    }
+
+    // --- Lógica para el clic en la TARJETA ---
+    if (card) {
         const tripId = card.dataset.id;
         openTripDetailsModal(tripId);
-    }
-    
-    if (!confirm(`¿Estás seguro de que quieres ${actionType === 'INICIO' ? 'iniciar' : 'finalizar'} este viaje?`)) return;
-
-    try {
-        alert("Obteniendo tu ubicación... por favor, acepta la solicitud del navegador.");
-        const location = await getCurrentLocation();
-
-        // >>> CAMBIO CLAVE AQUÍ <<<
-        // Enviamos user.choferId en lugar de user.id al backend
-        const result = await callApi('logTripEvent', {
-            viajeId: tripId,
-            choferId: user.choferId,
-            tipoLog: actionType,
-            ubicacion: location
-        });
-
-        if (result) {
-            alert(result);
-            initChoferView(); // Recargar la lista de viajes
-        }
-
-    } catch (error) {
-        alert(`Error: ${error}`);
     }
 }
 
