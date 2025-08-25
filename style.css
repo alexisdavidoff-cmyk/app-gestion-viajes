@@ -786,3 +786,56 @@ body {
 .clickable-row:hover {
     background-color: #f8f9fa;
 }
+.details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem 2rem;
+}
+.details-section {
+    border-top: 1px solid #f0f0f0;
+    padding-top: 1rem;
+}
+.details-section:first-child, .details-section:nth-child(2) {
+    border-top: none;
+}
+.details-section.full-width {
+    grid-column: 1 / -1;
+}
+.details-section h4 {
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+}
+.details-section p {
+    margin: 0.5rem 0;
+}
+.details-section p > strong {
+    color: #555;
+}
+.details-list {
+    list-style: none;
+    padding-left: 0;
+    text-transform: capitalize;
+}
+.details-list li {
+    margin-bottom: 0.5rem;
+}
+.signature-section img {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    max-width: 250px;
+    height: auto;
+}
+
+.table-controls {
+    display: flex;
+    gap: 1rem;
+}
+
+.table-controls input[type="text"],
+.table-controls select {
+    padding: 0.6rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}

@@ -112,38 +112,44 @@ const subViews = {
     '/viajes': {
         title: 'Gestión de Viaje    s',
         template: `
-            <div class="view-header">
-                <button id="btn-nuevo-viaje" class="btn-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
-                    <span>Nuevo Viaje</span>
-                </button>
-                <div class="filters">
-                    <!-- Aquí irán los filtros de búsqueda -->
-                    <input type="text" id="search-viajes" placeholder="Buscar por cliente, chofer...">
-                </div>
+        <div class="view-header">
+            <button id="btn-nuevo-viaje" class="btn-primary">
+                <span>+ Nuevo Viaje</span>
+            </button>
+            
+            <!-- >>> CONTROLES DE FILTRO Y ORDEN AÑADIDOS <<< -->
+            <div class="table-controls">
+                <input type="text" id="filter-input" placeholder="Buscar por cliente, chofer, origen...">
+                <select id="sort-select">
+                    <option value="fecha-desc">Más recientes primero</option>
+                    <option value="fecha-asc">Más antiguos primero</option>
+                    <option value="riesgo-desc">Mayor riesgo primero</option>
+                    <option value="riesgo-asc">Menor riesgo primero</option>
+                </select>
             </div>
-            <div class="table-container">
-                <table id="viajes-table">
-                    <thead>
-                        <tr>
-                            <th>ID Viaje</th>
-                            <th>Cliente</th>
-                            <th>Chofer</th>
-                            <th>Origen</th>
-                            <th>Destino</th>
-                            <th>Fecha/Hora</th>
-                            <th>Estado</th>
-                            <th>Riesgo</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Las filas de datos se insertarán aquí dinámicamente -->
-                    </tbody>
-                </table>
-            </div>
-        `
-    },
+        </div>
+        <div class="table-container">
+            <table id="viajes-table">
+                <thead>
+                    <tr>
+                        <th>ID Viaje</th>
+                        <th>Cliente</th>
+                        <th>Chofer</th>
+                        <th>Origen</th>
+                        <th>Destino</th>
+                        <th>Fecha/Hora</th>
+                        <th>Estado</th>
+                        <th>Riesgo</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Las filas de datos se insertarán aquí dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    `
+},
     // >>> AÑADE ESTA NUEVA PLANTILLA <<<
     '/aprobaciones': {
         title: 'Aprobaciones de Viajes Pendientes',

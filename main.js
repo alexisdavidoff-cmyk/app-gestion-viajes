@@ -3,6 +3,9 @@
 // Contiene la lógica principal del frontend de la aplicación.
 // =================================================================
 
+// VARIABLE GLOBAL PARA GUARDAR LOS DATOS DE VIAJES
+let allTripsData = []; // Guardará todos los viajes para no tener que pedirlos a la API cada vez
+
 // --- FUNCIONES DE INICIALIZACIÓN Y SESIÓN ---
 
 /**
@@ -105,9 +108,7 @@ function loadSubView(path) {
         // Ejecutar la lógica específica de la vista cargada
         switch(path) {
             case '/dashboard': loadDashboardView(); break; 
-            case '/viajes':
-                loadViajesTable();
-                break;
+            
                 // >>> AÑADE ESTE NUEVO CASO <<<
             case '/aprobaciones':
                 loadAprobacionesView();
@@ -116,7 +117,9 @@ function loadSubView(path) {
             case '/choferes': loadChoferesView(); break;
             case '/vehiculos': loadVehiculosView(); break;
             case '/clientes': loadClientesView(); break;
-            
+            case '/viajes':
+            initViajesView(); // Llamaremos a una nueva función de inicialización
+            break;
     }
             // Aquí irían los casos para otras vistas (choferes, vehículos, etc.)
         
@@ -124,6 +127,105 @@ function loadSubView(path) {
         viewTitle.textContent = 'Página no encontrada';
         viewContent.innerHTML = '<p>La sección que buscas no existe.</p>';
     }
+}
+
+/**
+ * Inicializa la vista de viajes: obtiene los datos una vez y configura los listeners.
+ */
+async function initViajesView() {
+    // Obtenemos todos los datos necesarios una sola vez al cargar la vista
+    const [viajes, clientes, choferes] = await Promise.all([
+        callApi('getRecords', { sheetName: 'Viajes' }),
+        callApi('getRecords', { sheetName: 'Clientes' }),
+        callApi('getRecords', { sheetName: 'Choferes' })
+    ]);
+
+    // Creamos mapas para una búsqueda rápida de nombres
+    const clientesMap = new Map(clientes.map(c => [c.ID, c.RazonSocial]));
+    const choferesMap = new Map(choferes.map(ch => [ch.ID, ch.Nombre]));
+
+    // Procesamos y guardamos los datos de viajes en nuestra variable global
+    allTripsData = viajes.map(viaje => ({
+        ...viaje,
+        clienteNombre: clientesMap.get(viaje.ClienteID) || 'N/A',
+        choferNombre: choferesMap.get(viaje.ChoferID) || 'N/A'
+    }));
+
+    // Añadimos los event listeners a los controles de filtro y orden
+    document.getElementById('filter-input').addEventListener('input', () => renderViajesTable());
+    document.getElementById('sort-select').addEventListener('change', () => renderViajesTable());
+    
+    // Renderizamos la tabla por primera vez
+    renderViajesTable();
+}
+
+/**
+ * Renderiza la tabla de viajes aplicando los filtros y el orden actual.
+ * Ya no necesita llamar a la API, trabaja con los datos en allTripsData.
+ */
+function renderViajesTable() {
+    const filterText = document.getElementById('filter-input').value.toLowerCase();
+    const sortBy = document.getElementById('sort-select').value;
+    
+    // 1. Filtrar datos
+    let filteredTrips = allTripsData.filter(viaje => {
+        return (
+            viaje.clienteNombre.toLowerCase().includes(filterText) ||
+            viaje.choferNombre.toLowerCase().includes(filterText) ||
+            viaje.Origen.toLowerCase().includes(filterText) ||
+            viaje.Destino.toLowerCase().includes(filterText) ||
+            viaje.IDViajeLegible.toLowerCase().includes(filterText)
+        );
+    });
+
+    // 2. Ordenar datos
+    const riesgoOrder = { 'Bajo': 1, 'Medio': 2, 'Alto': 3 };
+    filteredTrips.sort((a, b) => {
+        switch (sortBy) {
+            case 'fecha-asc':
+                return new Date(a.FechaHoraSalida) - new Date(b.FechaHoraSalida);
+            case 'riesgo-desc':
+                return (riesgoOrder[b.RiesgoCalculado] || 0) - (riesgoOrder[a.RiesgoCalculado] || 0);
+            case 'riesgo-asc':
+                return (riesgoOrder[a.RiesgoCalculado] || 0) - (riesgoOrder[b.RiesgoCalculado] || 0);
+            case 'fecha-desc':
+            default:
+                return new Date(b.FechaHoraSalida) - new Date(a.FechaHoraSalida);
+        }
+    });
+    
+    // 3. Renderizar tabla (reemplazamos la vieja lógica de loadViajesTable)
+    const tableBody = document.querySelector('#viajes-table tbody');
+    tableBody.innerHTML = '';
+    
+    if (filteredTrips.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;">No se encontraron viajes que coincidan con los filtros.</td></tr>';
+        return;
+    }
+
+    filteredTrips.forEach(viaje => {
+        const row = document.createElement('tr');
+        row.dataset.id = viaje.ID;
+        row.classList.add('clickable-row');
+
+        row.innerHTML = `
+            <td>${viaje.IDViajeLegible || 'N/A'}</td>
+            <td>${viaje.clienteNombre}</td>
+            <td>${viaje.choferNombre}</td>
+            <td>${viaje.Origen}</td>
+            <td>${viaje.Destino}</td>
+            <td>${new Date(viaje.FechaHoraSalida).toLocaleString()}</td>
+            <td><span class="status ${(viaje.Estado || '').toLowerCase()}">${viaje.Estado}</span></td>
+            <td><span class="riesgo ${(viaje.RiesgoCalculado || '').toLowerCase()}">${viaje.RiesgoCalculado}</span></td>
+            <td class="actions">
+                <!-- ... los botones de acción ... -->
+                <button class="btn-icon map btn-open-gmaps" data-origen="${viaje.Origen}" data-destino="${viaje.Destino}" title="Ver ruta en Google Maps">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-geo-alt-fill" viewBox="0 0 16 16"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
+                </button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
 }
 
 /**
@@ -437,11 +539,126 @@ async function openCrearViajeModal() {
     document.getElementById('form-crear-viaje').addEventListener('submit', handleViajeFormSubmit);
 }
 
+// Archivo: main.js -> REEMPLAZA esta función
+
+/**
+ * Recopila toda la información de un viaje y la muestra en un modal detallado.
+ * @param {string} tripId - El ID (UUID) del viaje a mostrar.
+ */
 async function openViajeDetailsModal(tripId) {
-    // (Esta función será grande. Recopilará todos los datos como hicimos para el PDF
-    // y los mostrará en un modal bien formateado).
-    // Por ahora, pondremos un placeholder:
-    alert(`Se abrirán los detalles para el viaje con ID interno: ${tripId}`);
+    const modalContainer = document.getElementById('modal-container');
+    modalContainer.innerHTML = `<div class="modal-overlay visible"><div class="modal modal-lg"><div class="modal-body"><p>Cargando detalles del viaje...</p></div></div></div>`;
+
+    try {
+        // 1. Recopilar todos los datos necesarios en paralelo
+        const [viajes, clientes, choferes, vehiculos, firmas, logs, usuarios] = await Promise.all([
+            callApi('getRecords', { sheetName: 'Viajes' }),
+            callApi('getRecords', { sheetName: 'Clientes' }),
+            callApi('getRecords', { sheetName: 'Choferes' }),
+            callApi('getRecords', { sheetName: 'Vehiculos' }),
+            callApi('getRecords', { sheetName: 'Firmas' }),
+            callApi('getRecords', { sheetName: 'LogsViajes' }),
+            callApi('getRecords', { sheetName: 'Usuarios' })
+        ]);
+
+        // 2. Encontrar todos los registros específicos para nuestro viaje
+        const viaje = viajes.find(v => v.ID === tripId);
+        if (!viaje) { throw new Error("Viaje no encontrado."); }
+
+        const cliente = clientes.find(c => c.ID === viaje.ClienteID) || {};
+        const chofer = choferes.find(ch => ch.ID === viaje.ChoferID) || {};
+        const vehiculo = vehiculos.find(v => v.ID === viaje.VehiculoID) || {};
+        const firma = firmas.find(f => f.ViajeID === tripId) || {};
+        const logInicio = logs.find(l => l.ViajeID === tripId && l.TipoLog === 'INICIO') || {};
+        const logFin = logs.find(l => l.ViajeID === tripId && l.TipoLog === 'FIN') || {};
+        const usuarioCreador = usuarios.find(u => u.ID === viaje.UsuarioCreadorID) || {};
+
+        // 3. Parsear los datos JSON guardados como texto
+        const checklistSeguridad = JSON.parse(viaje.ChecklistSeguridad || '{}');
+        const respuestasRiesgos = JSON.parse(viaje.RespuestasRiesgos || '{}');
+
+        // 4. Construir las secciones del HTML dinámicamente
+        const checklistHtml = Object.keys(checklistSeguridad).map(key => `<li>✔️ ${key.replace(/_/g, ' ')}</li>`).join('');
+        const riesgosHtml = Object.entries(respuestasRiesgos).map(([key, value]) => `<li><strong>${key}:</strong> ${value.valor} <em>(${value.puntos} pts)</em></li>`).join('');
+        
+        // 5. Renderizar el modal completo
+        modalContainer.innerHTML = `
+            <div class="modal-overlay visible">
+                <div class="modal modal-lg">
+                    <div class="modal-header">
+                        <h3>Detalles del Viaje: ${viaje.IDViajeLegible}</h3>
+                        <button class="modal-close-btn">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="details-grid">
+                            <!-- SECCIÓN DE INFORMACIÓN GENERAL -->
+                            <div class="details-section">
+                                <h4>Información General</h4>
+                                <p><strong>Cliente:</strong> ${cliente.RazonSocial || 'N/A'}</p>
+                                <p><strong>Origen:</strong> ${viaje.Origen}</p>
+                                <p><strong>Destino:</strong> ${viaje.Destino}</p>
+                                <p><strong>Propósito:</strong> ${viaje.Proposito || 'N/A'}</p>
+                                <p><strong>Ruta Detallada:</strong> ${viaje.RutaDetallada || 'N/A'}</p>
+                            </div>
+                            <!-- SECCIÓN DE OPERACIÓN -->
+                            <div class="details-section">
+                                <h4>Operación</h4>
+                                <p><strong>Chofer:</strong> ${chofer.Nombre || 'N/A'}</p>
+                                <p><strong>Vehículo:</strong> ${vehiculo.Patente || 'N/A'} (${vehiculo.Marca || ''} ${vehiculo.Modelo || ''})</p>
+                                <p><strong>Inicio Programado:</strong> ${new Date(viaje.FechaHoraSalida).toLocaleString()}</p>
+                                <p><strong>Fin Estimado:</strong> ${new Date(viaje.FechaHoraFinEstimada).toLocaleString()}</p>
+                            </div>
+                            <!-- SECCIÓN DE AUDITORÍA -->
+                            <div class="details-section full-width">
+                                <h4>Auditoría y Estado</h4>
+                                <p>
+                                    <strong>Estado:</strong> <span class="status ${String(viaje.Estado).toLowerCase()}">${viaje.Estado}</span>
+                                    <strong>Riesgo:</strong> <span class="riesgo ${String(viaje.RiesgoCalculado).toLowerCase()}">${viaje.RiesgoCalculado}</span>
+                                    (Puntaje: ${viaje.PuntajeRiesgo})
+                                </p>
+                                <p><strong>Creado por:</strong> ${usuarioCreador.Nombre || 'Desconocido'} el ${new Date(viaje.FechaCreacion).toLocaleString()}</p>
+                            </div>
+                            <!-- SECCIÓN DE LOGS -->
+                            <div class="details-section">
+                                <h4>Logs de Viaje</h4>
+                                <p><strong>Inicio Real:</strong> ${logInicio.FechaHora ? new Date(logInicio.FechaHora).toLocaleString() : 'Pendiente'}</p>
+                                <p><strong>Ubicación Inicio:</strong> ${logInicio.Ubicacion || 'N/A'}</p>
+                                <p><strong>Fin Real:</strong> ${logFin.FechaHora ? new Date(logFin.FechaHora).toLocaleString() : 'Pendiente'}</p>
+                                <p><strong>Ubicación Fin:</strong> ${logFin.Ubicacion || 'N/A'}</p>
+                            </div>
+                            <!-- SECCIÓN DE FIRMA -->
+                            <div class="details-section signature-section">
+                                <h4>Firma del Chofer</h4>
+                                ${firma.FirmaBase64 ? `<img src="${firma.FirmaBase64}" alt="Firma Digital">` : '<p>Pendiente de finalización.</p>'}
+                            </div>
+                            <!-- SECCIÓN CHECKLISTS -->
+                            <div class="details-section">
+                                <h4>Checklist Seguridad</h4>
+                                <ul class="details-list">${checklistHtml || '<li>No se completó.</li>'}</ul>
+                            </div>
+                            <div class="details-section">
+                                <h4>Checklist Riesgos</h4>
+                                <ul class="details-list">${riesgosHtml || '<li>No se completó.</li>'}</ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary modal-close-btn">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Añadimos de nuevo la lógica para el botón de cerrar
+        modalContainer.querySelector('.modal-close-btn').addEventListener('click', () => {
+            modalContainer.querySelector('.modal-overlay').classList.remove('visible');
+        });
+
+    } catch (error) {
+        console.error("Error al abrir los detalles del viaje:", error);
+        modalContainer.innerHTML = `<div class="modal-overlay visible"><div class="modal"><div class="modal-body"><p>Error al cargar los detalles: ${error.message}</p><button class="modal-close-btn">Cerrar</button></div></div></div>`;
+        modalContainer.querySelector('.modal-close-btn').addEventListener('click', () => modalContainer.querySelector('.modal-overlay').classList.remove('visible'));
+    }
 }
 
 
