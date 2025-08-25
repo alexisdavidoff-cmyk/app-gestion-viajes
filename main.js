@@ -481,19 +481,19 @@ function getCurrentLocation() {
 
 
 /**
- * Inicializa la vista del chofer, mostrando sus viajes.
+ * Inicializa la vista del chofer, mostrando sus viajes asignados
+ * y los botones de acción correspondientes a cada estado.
  */
 async function initChoferView() {
     const user = JSON.parse(sessionStorage.getItem('user'));
     document.getElementById('user-info-chofer').textContent = `Conectado como: ${user.nombre}`;
 
-    // LÓGICA AÑADIDA AQUÍ 👇
+    // Configurar el botón de logout para esta vista
     const logoutBtn = document.getElementById('logoutBtn-chofer');
     logoutBtn.addEventListener('click', () => {
         sessionStorage.removeItem('user');
         window.location.hash = '/';
     });
-    // Fin de la lógica añadida
 
     const tripListContainer = document.getElementById('chofer-trip-list');
     tripListContainer.innerHTML = '<p>Cargando viajes...</p>';
@@ -503,40 +503,65 @@ async function initChoferView() {
         callApi('getRecords', { sheetName: 'Clientes' })
     ]);
 
-    const clientesMap = new Map(clientes.map(c => [c.ID, c.RazonSocial]));
-
-    const misViajes = viajes.filter(v => 
-        v.ChoferID === user.choferId && (v.Estado === 'Aprobado' || v.Estado === 'En curso')
-    );
-
-    if (misViajes.length === 0) {
-        tripListContainer.innerHTML = '<p>No tienes viajes asignados o pendientes de iniciar.</p>';
+    if (!viajes || !clientes) {
+        tripListContainer.innerHTML = '<p>No se pudieron cargar los viajes. Intenta de nuevo más tarde.</p>';
         return;
     }
 
-    tripListContainer.innerHTML = misViajes.map(viaje => `
-        <div class="trip-card status-${viaje.Estado.toLowerCase()}" data-id="${viaje.ID}">
-            <div class="trip-card-header">
-                <strong>Cliente:</strong> ${clientesMap.get(viaje.ClienteID) || 'N/A'}
-            </div>
-            <div class="trip-card-body">
-                <p><strong>Origen:</strong> ${viaje.Origen}</p>
-                <p><strong>Destino:</strong> ${viaje.Destino}</p>
-                <p><strong>Fecha:</strong> ${new Date(viaje.FechaHoraSalida).toLocaleString()}</p>
-            </div>
-            <div class="trip-card-footer">
-                ${viaje.Estado === 'Aprobado' 
-                    ? `<button class="btn-start" data-id="${viaje.ID}">▶ Iniciar Viaje</button>`
-                    : `<button class="btn-end" data-id="${viaje.ID}">⏹ Finalizar Viaje</button>`
-                }
-            </div>
-        </div>
-    `).join('');
+    const clientesMap = new Map(clientes.map(c => [c.ID, c.RazonSocial]));
 
-    // Delegación de eventos para los botones de acción
-    tripListContainer.addEventListener('click', handleChoferActions);
+    // Filtramos para mostrar todos los viajes relevantes para el chofer
+    const misViajes = viajes.filter(v => 
+        v.ChoferID === user.choferId && ['Aprobado', 'En curso', 'Finalizado'].includes(v.Estado)
+    );
 
+    // Ordenamos los viajes para que los activos aparezcan primero
+    misViajes.sort((a, b) => {
+        const order = { 'En curso': 1, 'Aprobado': 2, 'Finalizado': 3 };
+        return (order[a.Estado] || 99) - (order[b.Estado] || 99);
+    });
+
+    if (misViajes.length === 0) {
+        tripListContainer.innerHTML = '<p>No tienes viajes asignados actualmente.</p>';
+        return;
+    }
+
+    tripListContainer.innerHTML = misViajes.map(viaje => {
+        let actionButton = '';
+        if (viaje.Estado === 'Aprobado') {
+            actionButton = `<button class="btn-start" data-id="${viaje.ID}">▶ Iniciar Viaje</button>`;
+        } else if (viaje.Estado === 'En curso') {
+            actionButton = `<button class="btn-end" data-id="${viaje.ID}">⏹ Finalizar Viaje</button>`;
+        } else if (viaje.Estado === 'Finalizado') {
+            actionButton = `<button class="btn-pdf" data-id="${viaje.ID}">📄 Descargar Constancia</button>`;
+        }
+
+        // Añadimos una clase extra para los viajes finalizados para poder darles un estilo diferente
+        const extraCardClass = viaje.Estado === 'Finalizado' ? 'status-finalizado-card' : '';
+
+        return `
+            <div class="trip-card status-${viaje.Estado.toLowerCase()} ${extraCardClass}" data-id="${viaje.ID}">
+                <div class="trip-card-header">
+                    <strong>Cliente:</strong> ${clientesMap.get(viaje.ClienteID) || 'N/A'}
+                </div>
+                <div class="trip-card-body">
+                    <p><strong>Origen:</strong> ${viaje.Origen}</p>
+                    <p><strong>Destino:</strong> ${viaje.Destino}</p>
+                    <p><strong>Estado:</strong> <span class="status ${viaje.Estado.toLowerCase()}">${viaje.Estado}</span></p>
+                </div>
+                <div class="trip-card-footer">
+                    ${actionButton}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Re-asignamos el event listener al contenedor
+    // (Es una buena práctica hacerlo después de regenerar el HTML)
+    tripListContainer.removeEventListener('click', handleChoferActions); // Limpiamos el anterior
+    tripListContainer.addEventListener('click', handleChoferActions); // Añadimos el nuevo
 }
+
 
 /**
  * Manejador para los botones de la vista del chofer.
@@ -585,6 +610,13 @@ async function handleChoferActions(event) {
     if (card) {
         const tripId = card.dataset.id;
         openTripDetailsModal(tripId);
+    }
+
+    const pdfButton = event.target.closest('.btn-pdf');
+    if (pdfButton) {
+        const tripId = pdfButton.dataset.id;
+        generateTripPDF(tripId);
+        return; // Detenemos la ejecución
     }
 }
 
@@ -1214,4 +1246,89 @@ function openSignatureModal(tripId) {
             alert(`Error: ${error}`);
         }
     });
+}
+/**
+ * Recopila todos los datos de un viaje y genera un PDF de constancia.
+ * @param {string} tripId - El ID del viaje para el cual generar el PDF.
+ */
+async function generateTripPDF(tripId) {
+    alert("Generando PDF... por favor espera.");
+    const { jsPDF } = window.jspdf;
+
+    try {
+        // 1. Recopilar todos los datos necesarios en paralelo
+        const [viajes, clientes, choferes, vehiculos, firmas, logs] = await Promise.all([
+            callApi('getRecords', { sheetName: 'Viajes' }),
+            callApi('getRecords', { sheetName: 'Clientes' }),
+            callApi('getRecords', { sheetName: 'Choferes' }),
+            callApi('getRecords', { sheetName: 'Vehiculos' }),
+            callApi('getRecords', { sheetName: 'Firmas' }),
+            callApi('getRecords', { sheetName: 'LogsViajes' })
+        ]);
+
+        // 2. Encontrar los registros específicos para nuestro viaje
+        const viaje = viajes.find(v => v.ID === tripId);
+        const cliente = clientes.find(c => c.ID === viaje.ClienteID);
+        const chofer = choferes.find(ch => ch.ID === viaje.ChoferID);
+        const vehiculo = vehiculos.find(v => v.ID === viaje.VehiculoID);
+        const firma = firmas.find(f => f.ViajeID === tripId);
+        const logInicio = logs.find(l => l.ViajeID === tripId && l.TipoLog === 'INICIO');
+        const logFin = logs.find(l => l.ViajeID === tripId && l.TipoLog === 'FIN');
+
+        // 3. Crear el documento PDF
+        const doc = new jsPDF();
+        let y = 20; // Posición vertical inicial
+
+        // Encabezado
+        doc.setFontSize(22);
+        doc.text("Constancia de Viaje Finalizado", 105, y, { align: 'center' });
+        y += 15;
+        
+        // Datos del Viaje
+        doc.setFontSize(12);
+        doc.text(`ID del Viaje: ${viaje.ID}`, 15, y);
+        y += 10;
+        doc.text(`Cliente: ${cliente.RazonSocial}`, 15, y);
+        y += 7;
+        doc.text(`Origen: ${viaje.Origen}`, 15, y);
+        y += 7;
+        doc.text(`Destino: ${viaje.Destino}`, 15, y);
+        y += 15;
+
+        // Datos del Chofer y Vehículo
+        doc.setFontSize(16);
+        doc.text("Detalles de la Operación", 15, y);
+        y += 10;
+        doc.setFontSize(12);
+        doc.text(`Chofer: ${chofer.Nombre} (Licencia: ${chofer.Licencia})`, 15, y);
+        y += 7;
+        doc.text(`Vehículo: ${vehiculo.Marca} ${vehiculo.Modelo} (Patente: ${vehiculo.Patente})`, 15, y);
+        y += 15;
+        
+        // Logs de Inicio y Fin
+        doc.setFontSize(16);
+        doc.text("Registro de Eventos", 15, y);
+        y += 10;
+        doc.setFontSize(12);
+        doc.text(`Inicio: ${logInicio ? new Date(logInicio.FechaHora).toLocaleString() : 'N/A'}`, 15, y);
+        y += 7;
+        doc.text(`Fin: ${logFin ? new Date(logFin.FechaHora).toLocaleString() : 'N/A'}`, 15, y);
+        y += 15;
+        
+        // Firma Digital
+        if (firma && firma.FirmaBase64) {
+            doc.setFontSize(16);
+            doc.text("Firma del Chofer", 15, y);
+            y += 5;
+            // Añadimos la imagen de la firma (Base64) al PDF
+            doc.addImage(firma.FirmaBase64, 'PNG', 15, y, 80, 40); // x, y, ancho, alto
+        }
+
+        // 4. Guardar el PDF
+        doc.save(`Constancia-Viaje-${viaje.ID.substring(0, 8)}.pdf`);
+
+    } catch (error) {
+        console.error("Error al generar el PDF:", error);
+        alert("Hubo un error al generar el PDF. Revisa la consola para más detalles.");
+    }
 }

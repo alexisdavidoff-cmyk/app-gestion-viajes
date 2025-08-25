@@ -515,3 +515,13 @@ body {
     cursor: pointer;
     font-weight: 600;
 }
+.btn-pdf {
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    background-color: var(--primary-color);
+}
