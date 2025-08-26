@@ -449,6 +449,10 @@ async function openCrearViajeModal() {
                             <div class="form-group"><label>Cliente</label><select id="cliente" required>${clientesOptions}</select></div>
                             <div class="form-group"><label>Chofer</label><select id="chofer" required>${choferesOptions}</select></div>
                             <div class="form-group"><label>Vehículo</label><select id="vehiculo" required>${vehiculosOptions}</select></div>
+                            <div class="form-group">
+                            <label>Horas de trabajo previas del chofer</label>
+                            <input type="number" id="horasTrabajo" required min="0" placeholder="Ej: 8">
+                        </div>
                             <div class="form-group"><label>Propósito del Viaje</label><input type="text" id="proposito" required></div>
                             <div class="form-group full-width"><label>Ruta a Seguir</label><textarea id="ruta" rows="2"></textarea></div>
                         </div>
@@ -466,7 +470,8 @@ async function openCrearViajeModal() {
                             <label><input type="checkbox" name="seguridad" value="matafuegos"> Matafuegos</label>
                             <label><input type="checkbox" name="seguridad" value="botiquin"> Botiquín</label>
                             <label><input type="checkbox" name="seguridad" value="triangulo_chaleco"> Triángulo y Chaleco</label>
-                            <label><input type="checkbox" name="seguridad" value="rueda_auxilio"> Rueda de Auxilio</label>
+                            <label><input type="checkbox" name="seguridad" value="rueda_auxilio"> Rueda de Auxilio</label> 
+                            <label><input type="checkbox" name="seguridad" value="descanso_obligatorio"> Descanso Obligatorio</label> 
                         </div>
                     </div>
 
@@ -495,14 +500,32 @@ async function openCrearViajeModal() {
                                 <label><input type="radio" name="clima" data-points="3"> Lluvia Torrencial <span class="pts">3pts</span></label>
                                 <label><input type="radio" name="clima" data-points="4"> Niebla / Hielo / Nieve <span class="pts">4pts</span></label>
                             </div>
+                            <div class="riesgo-group">
+                                <h5>D. Comunicación</h5>
+                                <label><input type="radio" name="comunicacion" data-points="1" required> Teléfono celular o radio <span class="pts">1 pts</span></label>
+                                <label><input type="radio" name="comunicacion" data-points="2"> Sin comunicación <span class="pts">2 pts</span></label>
+                            </div>
+                            <div class="riesgo-group">
+                                <h5>E. Tipo de Viaje</h5>
+                                <label><input type="radio" name="convoy" data-points="1" required> 2 o más vehículos con 2 o más conductores <span class="pts">1 pts</span></label>
+                                <label><input type="radio" name="convoy" data-points="2"> 2 o más vehículos con 1 conductor <span class="pts">2 pts</span></label>
+                                <label><input type="radio" name="convoy" data-points="3"> 1 vehículo con 2 o más conductores <span class="pts">3 pts</span></label>
+                                <label><input type="radio" name="convoy" data-points="4"> 1 vehículo y 1 conductor <span class="pts">4 pts</span></label>
+                            </div>
+                            <div class="riesgo-group">
+                                <h5>F. Condiciones del Tránsito</h5>
+                                <label><input type="radio" name="transito" data-points="1" required> Tráfico bajo <span class="pts">1 pts</span></label>
+                                <label><input type="radio" name="transito" data-points="2"> Tráfico moderado <span class="pts">2 pts</span></label>
+                                <label><input type="radio" name="transito" data-points="3"> Tráfico alto <span class="pts">3 pts</span></label>
+                                <label><input type="radio" name="transito" data-points="4"> Alto tráfico de camiones y/o motocicletas <span class="pts">4 pts</span></label>
+                            </div>
                         </div>
-                    </div>
-                    
+                    </div>    
                     <!-- SECCIÓN 4: RESULTADO -->
                     <div class="form-section">
                         <h4>4. Resultado del Análisis</h4>
                         <div class="resultado-box">
-                            <span>Puntaje Total:</span>
+                            <span>Riesgo Total:</span>
                             <strong id="puntaje-total">0</strong>
                         </div>
                     </div>
@@ -616,7 +639,7 @@ async function openViajeDetailsModal(tripId) {
                                     <strong>Riesgo:</strong> <span class="riesgo ${String(viaje.RiesgoCalculado).toLowerCase()}">${viaje.RiesgoCalculado}</span>
                                     (Puntaje: ${viaje.PuntajeRiesgo})
                                 </p>
-                                <p><strong>Creado por:</strong> ${usuarioCreador.Nombre || 'Desconocido'} el ${new Date(viaje.FechaCreacion).toLocaleString()}</p>
+                                <p><strong>Creado por:</strong> ${usuarioCreador.Nombre || 'Desconocido'} ${viaje.FechaCreacion ? `el ${new Date(viaje.FechaCreacion).toLocaleString()}` : ''}</p>
                             </div>
                             <!-- SECCIÓN DE LOGS -->
                             <div class="details-section">
@@ -649,11 +672,12 @@ async function openViajeDetailsModal(tripId) {
             </div>
         `;
 
-        // Añadimos de nuevo la lógica para el botón de cerrar
-        modalContainer.querySelector('.modal-close-btn').addEventListener('click', () => {
-            modalContainer.querySelector('.modal-overlay').classList.remove('visible');
-        });
-
+        // Usamos querySelectorAll para encontrar TODOS los botones con esa clase
+        modalContainer.querySelectorAll('.modal-close-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+        modalContainer.querySelector('.modal-overlay').classList.remove('visible');
+    });
+    });
     } catch (error) {
         console.error("Error al abrir los detalles del viaje:", error);
         modalContainer.innerHTML = `<div class="modal-overlay visible"><div class="modal"><div class="modal-body"><p>Error al cargar los detalles: ${error.message}</p><button class="modal-close-btn">Cerrar</button></div></div></div>`;
@@ -682,6 +706,8 @@ async function handleViajeFormSubmit(e) {
         FechaHoraFinEstimada: document.getElementById('fechaFin').value,
         Proposito: document.getElementById('proposito').value,
         RutaDetallada: document.getElementById('ruta').value,
+        HorasTrabajoPrevias: document.getElementById('horasTrabajo').value,
+
         Estado: 'Pendiente',
         // >>> AÑADIMOS EL DATO DE AUDITORÍA <<<
         UsuarioCreadorID: user.id 
