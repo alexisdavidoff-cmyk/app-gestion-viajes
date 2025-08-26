@@ -65,6 +65,14 @@ function initDashboard() {
         });
     });
 
+    // --- LÓGICA PARA EL BOTÓN DE HAMBURGUESA ---
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebar = document.querySelector('.sidebar');
+    if (menuToggle && sidebar) {
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+    }
     filterMenuByRole(user.rol);
     
     // --- ¡AQUÍ ESTÁ EL CAMBIO CLAVE! ---
@@ -983,6 +991,14 @@ async function initChoferView() {
  * Manejador central de clics para la vista del chofer, adaptado a las tarjetas detalladas.
  * @param {Event} event El objeto del evento de clic.
  */
+
+
+// Archivo: main.js -> REEMPLAZA ESTA FUNCIÓN
+
+/**
+ * Manejador central de clics para la vista del chofer, adaptado a las tarjetas detalladas.
+ * @param {Event} event El objeto del evento de clic.
+ */
 async function handleChoferActions(event) {
     const user = JSON.parse(sessionStorage.getItem('user'));
     
@@ -1028,49 +1044,6 @@ async function handleChoferActions(event) {
         return;
     }
 }
-
-async function handleChoferActions(event) {
-    const user = JSON.parse(sessionStorage.getItem('user'));
-    
-    const startButton = event.target.closest('.btn-start');
-    const endButton = event.target.closest('.btn-end');
-    const pdfButton = event.target.closest('.btn-pdf');
-    const gmapsButton = event.target.closest('.btn-open-gmaps');
-
-    // --- Lógica para el botón INICIAR ---
-    if (startButton) {
-        const tripId = startButton.dataset.id;
-        if (!confirm(`¿Estás seguro de que quieres iniciar este viaje?`)) return;
-        try {
-            alert("Obteniendo tu ubicación...");
-            const location = await getCurrentLocation();
-            const result = await callApi('logTripEvent', { viajeId: tripId, choferId: user.choferId, tipoLog: 'INICIO', ubicacion: location });
-            if (result) { alert(result); initChoferView(); }
-        } catch (error) { alert(`Error: ${error}`); }
-        return;
-    }
-
-    // --- Lógica para el botón FINALIZAR ---
-    if (endButton) {
-        openSignatureModal(endButton.dataset.id);
-        return;
-    }
-
-    // --- Lógica para el botón PDF ---
-    if (pdfButton) {
-        generateTripPDF(pdfButton.dataset.id);
-        return;
-    }
-    
-    // --- Lógica para el botón GOOGLE MAPS ---
-    if (gmapsButton) {
-        const origen = gmapsButton.dataset.origen;
-        const destino = gmapsButton.dataset.destino;
-        const gmapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origen)}&destination=${encodeURIComponent(destino)}`;
-        window.open(gmapsUrl, '_blank');
-        return;
-    }
-}
 /**
  * Carga y muestra la lista de usuarios del sistema.
  */
@@ -1086,14 +1059,24 @@ async function loadUsuariosView() {
         const estadoText = (user.Activo === true || String(user.Activo).toLowerCase() === 'true') ? 'Activo' : 'Inactivo';
         const estadoClass = estadoText.toLowerCase();
 
+        // --- HTML DE LA FILA A REEMPLAZAR (CON SVG COMPLETOS) ---
         row.innerHTML = `
-            <td>${user.Nombre}</td>
-            <td>${user.Email}</td>
-            <td>${user.Rol}</td>
-            <td><span class="status ${estadoClass}">${estadoText}</span></td>
-            <td class="actions">
-                <button class="btn-icon edit btn-edit-usuario" data-id="${user.ID}" title="Editar Usuario"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg></button>
-                <button class="btn-icon delete btn-delete-usuario" data-id="${user.ID}" title="Eliminar Usuario"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg></button>
+            <td data-label="Nombre">${user.Nombre}</td>
+            <td data-label="Email">${user.Email}</td>
+            <td data-label="Rol">${user.Rol}</td>
+            <td data-label="Estado"><span class="status ${estadoClass}">${estadoText}</span></td>
+            <td data-label="Acciones" class="actions">
+                <button class="btn-icon edit btn-edit-usuario" data-id="${user.ID}" title="Editar Usuario">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil" viewBox="0 0 16 16">
+                        <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
+                    </svg>
+                </button>
+                <button class="btn-icon delete btn-delete-usuario" data-id="${user.ID}" title="Eliminar Usuario">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                        <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                    </svg>
+                </button>
             </td>
         `;
         tableBody.appendChild(row);
@@ -1256,14 +1239,15 @@ async function loadChoferesView() {
     choferes.forEach(chofer => {
         const row = document.createElement('tr');
         const estadoClass = String(chofer.Estado).toLowerCase();
+        // --- HTML CON ATRIBUTOS DE DATOS AÑADIDOS ---
         row.innerHTML = `
-            <td>${chofer.Nombre}</td>
-            <td>${chofer.DNI}</td>
-            <td>${chofer.Licencia}</td>
-            <td>${chofer.VencimientoLicencia ? new Date(chofer.VencimientoLicencia).toLocaleDateString() : ''}</td>
-            <td>${chofer.Telefono}</td>
-            <td><span class="status ${estadoClass}">${chofer.Estado}</span></td>
-            <td class="actions">
+            <td data-label="Nombre">${chofer.Nombre}</td>
+            <td data-label="DNI">${chofer.DNI}</td>
+            <td data-label="Licencia">${chofer.Licencia}</td>
+            <td data-label="Vencimiento">${chofer.VencimientoLicencia ? new Date(chofer.VencimientoLicencia).toLocaleDateString() : ''}</td>
+            <td data-label="Teléfono">${chofer.Telefono}</td>
+            <td data-label="Estado"><span class="status ${estadoClass}">${chofer.Estado}</span></td>
+            <td data-label="Acciones" class="actions">
                 <button class="btn-icon edit btn-edit-chofer" data-id="${chofer.ID}" title="Editar Chofer"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg></button>
                 <button class="btn-icon delete btn-delete-chofer" data-id="${chofer.ID}" title="Eliminar Chofer"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg></button>
             </td>

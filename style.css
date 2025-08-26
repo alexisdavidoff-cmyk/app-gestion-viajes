@@ -173,12 +173,35 @@ body {
 
 /* --- Responsividad --- */
 @media (max-width: 768px) {
+    
     .sidebar {
-        width: 60px;
+        width: 60px; /* La encogemos a un ancho fijo */
+        padding: 1.5rem 0.5rem; /* Ajustamos el padding */
+        text-align: center;
     }
-    .sidebar .logo, .sidebar .menu a span {
-        display: none; /* Oculta texto, deja iconos */
+
+    .sidebar .logo {
+        display: none; /* Ocultamos el logo de texto */
     }
+
+    .sidebar .menu a span {
+        display: none; /* Ocultamos el texto de los enlaces del menú */
+    }
+    
+    .sidebar .menu a svg {
+        margin: 0 auto; /* Centramos los iconos si los tuvieras */
+    }
+    
+    .main-content {
+        padding: 1rem; /* Reducimos el padding en el contenido principal */
+    }
+
+    .header {
+        flex-direction: column; /* Apila los elementos verticalmente */
+        align-items: flex-start; /* Los alinea a la izquierda */
+        gap: 0.5rem; /* Añade un pequeño espacio entre el título y el saludo */
+    }
+    
 }
 
 /* --- Estilos de la Vista de Contenido --- */
@@ -838,4 +861,119 @@ body {
     border: 1px solid #ddd;
     border-radius: 5px;
     font-size: 0.9rem;
+}
+
+
+/* --- ESTILOS PARA TABLAS RESPONSIVE --- */
+
+/* Usaremos esta media query para aplicar los estilos solo en pantallas pequeñas */
+@media screen and (max-width: 768px) {
+    /* --- 1. LÓGICA DEL MENÚ HAMBURGUESA --- */
+    .dashboard-layout {
+        /* Hacemos que el sidebar no ocupe espacio por defecto */
+        padding-left: 0; 
+    }
+    
+    .sidebar {
+        position: fixed; /* Lo sacamos del flujo normal */
+        left: -250px; /* Lo escondemos fuera de la pantalla */
+        top: 0;
+        height: 100%;
+        z-index: 1100; /* Por encima del contenido */
+        transition: left 0.3s ease-in-out;
+        width: 250px; /* Le devolvemos su ancho normal */
+    }
+    
+    .sidebar.open {
+        left: 0; /* Lo mostramos al añadir la clase 'open' */
+    }
+
+    .menu-toggle-btn {
+        display: block; /* Mostramos el botón de hamburguesa */
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0.5rem;
+    }
+
+    .header {
+        /* Reajustamos para que el título y el usuario queden bien */
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        width: 100%;
+        align-items: center;
+    }
+    .header h1 {
+        grid-column: 2;
+        text-align: center;
+        font-size: 1.2rem;
+    }
+    .header #user-info {
+        grid-column: 3;
+    }
+
+    /* --- 2. CORRECCIÓN PARA LAS TABLAS RESPONSIVE --- */
+    .table-container thead {
+        display: none;
+    }
+    
+    .table-container table,
+    .table-container tbody,
+    .table-container tr,
+    .table-container td {
+        display: block;
+        width: 100%;
+    }
+    
+    .table-container tr {
+        margin-bottom: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .table-container td {
+        padding: 0.8rem 1rem;
+        border-bottom: 1px solid #eee;
+        display: flex; /* Usamos flex para alinear etiqueta y valor */
+        justify-content: space-between;
+        align-items: center;
+        text-align: right;
+    }
+    .table-container tr td:last-child {
+        border-bottom: none;
+    }
+    
+    .table-container td::before {
+        content: attr(data-label);
+        font-weight: bold;
+        text-align: left;
+        color: var(--primary-color);
+        padding-right: 1rem; /* Espacio entre etiqueta y valor */
+    }
+    
+    /* --- 3. CORRECCIÓN PARA LOS ICONOS DE ACCIÓN --- */
+    .table-container td.actions {
+        /* Para la celda de acciones, no queremos el comportamiento flex */
+        display: block; 
+        background-color: #f9f9f9;
+    }
+    .table-container td.actions::before {
+        /* Mostramos la etiqueta "Acciones" como un título */
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    .table-container td.actions .btn-icon {
+        /* Damos un estilo más grande y visible a los botones en móvil */
+        display: inline-block;
+        padding: 0.5rem;
+        margin: 0 0.3rem;
+    }
+}
+
+/* Ocultar el botón de hamburguesa en pantallas grandes */
+.menu-toggle-btn {
+    display: none;
+
 }
