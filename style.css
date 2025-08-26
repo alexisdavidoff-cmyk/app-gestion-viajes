@@ -244,6 +244,36 @@ body {
     overflow-x: auto; /* Para responsividad en tablas grandes */
 }
 
+/* Aplicamos los estilos a cualquier tabla dentro del contenedor */
+.table-container table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.table-container th, 
+.table-container td {
+    padding: 0.9rem 1rem; /* Espaciado interno */
+    text-align: left;
+    border-bottom: 1px solid #eee; /* Línea sutil de separación */
+    vertical-align: middle; /* Centra el contenido verticalmente */
+}
+
+/* Estilos específicos para el encabezado de la tabla */
+.table-container th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--dark-gray);
+    text-transform: uppercase; /* Pone los títulos en mayúscula */
+    letter-spacing: 0.5px;
+}
+
+/* Efecto hover en las filas de datos */
+.table-container tbody tr:hover {
+    background-color: #f1f1f1;
+}
+
 #viajes-table {
     width: 100%;
     border-collapse: collapse;
@@ -272,8 +302,9 @@ body {
     border-radius: 12px;
     font-size: 0.8rem;
     font-weight: 700;
-    color: white;
+    color: white; /* Color de texto por defecto */
     text-transform: capitalize;
+    display: inline-block; /* Asegura que el fondo se aplique */
 }
 
 .status.pendiente { background-color: #ffc107; color: var(--dark-gray); }
@@ -281,6 +312,16 @@ body {
 .status.rechazado { background-color: #dc3545; }
 .status.encurso { background-color: #17a2b8; }
 .status.finalizado { background-color: #6c757d; }
+
+.status.activo {
+    background-color: var(--success-color); /* Verde */
+    color: var(--white); /* Mantenemos el texto blanco si el verde es oscuro */
+}
+
+.status.inactivo {
+    background-color: #6c757d; /* Gris */
+    color: var(--white);
+}
 
 .riesgo.bajo { background-color: #28a745; }
 .riesgo.medio { background-color: #ffc107; color: var(--dark-gray); }
