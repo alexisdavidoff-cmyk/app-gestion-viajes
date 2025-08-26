@@ -977,6 +977,58 @@ async function initChoferView() {
     }
 }
 
+// Archivo: main.js -> REEMPLAZA ESTA FUNCIÓN
+
+/**
+ * Manejador central de clics para la vista del chofer, adaptado a las tarjetas detalladas.
+ * @param {Event} event El objeto del evento de clic.
+ */
+async function handleChoferActions(event) {
+    const user = JSON.parse(sessionStorage.getItem('user'));
+    
+    // Identificamos en qué botón específico se hizo clic
+    const startButton = event.target.closest('.btn-start');
+    const endButton = event.target.closest('.btn-end');
+    const pdfButton = event.target.closest('.btn-pdf');
+    const gmapsButton = event.target.closest('.btn-open-gmaps');
+
+    // --- Lógica para el botón INICIAR ---
+    if (startButton) {
+        const tripId = startButton.dataset.id;
+        if (!confirm(`¿Estás seguro de que quieres iniciar este viaje?`)) return;
+        try {
+            alert("Obteniendo tu ubicación...");
+            const location = await getCurrentLocation();
+            const result = await callApi('logTripEvent', { viajeId: tripId, choferId: user.choferId, tipoLog: 'INICIO', ubicacion: location });
+            if (result) { alert(result); initChoferView(); }
+        } catch (error) { alert(`Error: ${error}`); }
+        return;
+    }
+
+    // --- Lógica para el botón FINALIZAR ---
+    if (endButton) {
+        const tripId = endButton.dataset.id;
+        openSignatureModal(tripId);
+        return;
+    }
+
+    // --- Lógica para el botón PDF ---
+    if (pdfButton) {
+        const tripId = pdfButton.dataset.id;
+        generateTripPDF(tripId);
+        return;
+    }
+    
+    // --- Lógica para el botón GOOGLE MAPS ---
+    if (gmapsButton) {
+        const origen = gmapsButton.dataset.origen;
+        const destino = gmapsButton.dataset.destino;
+        const gmapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origen)}&destination=${encodeURIComponent(destino)}`;
+        window.open(gmapsUrl, '_blank');
+        return;
+    }
+}
+
 async function handleChoferActions(event) {
     const user = JSON.parse(sessionStorage.getItem('user'));
     
