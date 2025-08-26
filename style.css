@@ -868,41 +868,90 @@ body {
 
 /* Usaremos esta media query para aplicar los estilos solo en pantallas pequeñas */
 @media screen and (max-width: 768px) {
+    
     /* --- 1. LÓGICA DEL MENÚ HAMBURGUESA --- */
+    
+    
+    
     .dashboard-layout {
-        /* Hacemos que el sidebar no ocupe espacio por defecto */
-        padding-left: 0; 
+        /* ¡ELIMINAMOS EL DISPLAY FLEX EN MÓVILES! */
+        /* Esto permite que el .main-content ocupe su espacio natural */
+        display: block;
     }
     
     .sidebar {
-        position: fixed; /* Lo sacamos del flujo normal */
-        left: -250px; /* Lo escondemos fuera de la pantalla */
+        position: fixed;
+        left: -250px; /* Escondido por defecto */
         top: 0;
         height: 100%;
-        z-index: 1100; /* Por encima del contenido */
+        z-index: 1100;
         transition: left 0.3s ease-in-out;
-        width: 250px; /* Le devolvemos su ancho normal */
+        width: 250px;
     }
     
     .sidebar.open {
-        left: 0; /* Lo mostramos al añadir la clase 'open' */
+        left: 0; /* Lo mostramos */
     }
 
     .menu-toggle-btn {
-        display: block; /* Mostramos el botón de hamburguesa */
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 0.5rem;
+    display: block !important; /* ¡Forzamos a que se muestre! */
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 1200; 
+    background-color: var(--dark-gray);
+    color: white;
+    border: 2px solid var(--white);
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    /* Centramos el icono SVG dentro del botón */
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
+}
+
+    /* Creamos un overlay para oscurecer el fondo cuando el menú está abierto */
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1050; /* Por debajo del sidebar, por encima del contenido */
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease-in-out;
+    }
+    .sidebar-overlay.visible {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Ajustamos el contenido principal para que no se superponga */
+    .main-content {
+        padding: 1rem;
+        /* Espacio para el botón de hamburguesa */
+        padding-top: 60px; 
     }
 
     .header {
-        /* Reajustamos para que el título y el usuario queden bien */
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        width: 100%;
-        align-items: center;
+        /* Mantenemos el header simple */
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
     }
+
+
+    
+    
+    
+
+    
+
+    
     .header h1 {
         grid-column: 2;
         text-align: center;

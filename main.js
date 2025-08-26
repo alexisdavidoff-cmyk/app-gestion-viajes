@@ -41,6 +41,12 @@ function initLogin() {
  * Inicializa el dashboard principal después de un login exitoso.
  */
 function initDashboard() {
+    // Añadimos el overlay al body una sola vez
+    if (!document.querySelector('.sidebar-overlay')) {
+        const overlay = document.createElement('div');
+        overlay.className = 'sidebar-overlay';
+        document.body.appendChild(overlay);
+    }
     const user = JSON.parse(sessionStorage.getItem('user'));
     if (!user) return;
 
@@ -68,16 +74,31 @@ function initDashboard() {
     // --- LÓGICA PARA EL BOTÓN DE HAMBURGUESA ---
     const menuToggle = document.getElementById('menu-toggle');
     const sidebar = document.querySelector('.sidebar');
-    if (menuToggle && sidebar) {
-        menuToggle.addEventListener('click', () => {
+    const sidebarOverlay = document.querySelector('.sidebar-overlay');
+
+    const closeMenu = () => {
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('visible');
+    };
+
+    if (menuToggle && sidebar && sidebarOverlay) {
+        menuToggle.addEventListener('click', (e) => {
+            e.stopPropagation(); // Evita que el clic se propague
             sidebar.classList.toggle('open');
+            sidebarOverlay.classList.toggle('visible');
+        });
+
+        // Al hacer clic en el overlay, cerramos el menú
+        sidebarOverlay.addEventListener('click', closeMenu);
+        
+        // Al hacer clic en un enlace del menú, también lo cerramos
+        sidebar.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', closeMenu);
         });
     }
+
     filterMenuByRole(user.rol);
-    
-    // --- ¡AQUÍ ESTÁ EL CAMBIO CLAVE! ---
-    // Aseguramos que la vista por defecto sea el tablero de control.
-    loadSubView('/dashboard'); 
+    loadSubView('/dashboard');
 }
 
 /**
