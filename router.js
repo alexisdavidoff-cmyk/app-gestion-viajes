@@ -110,7 +110,7 @@ const Router = {
 // AÑADIMOS LAS PLANTILLAS PARA LAS SUB-VISTAS
 const subViews = {
     '/viajes': {
-        title: 'Gestión de Viaje    s',
+        title: 'Gestión de Viajes',
         template: `
         <div class="view-header">
             <button id="btn-nuevo-viaje" class="btn-primary">

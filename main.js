@@ -222,6 +222,10 @@ function renderViajesTable() {
                 <button class="btn-icon map btn-open-gmaps" data-origen="${viaje.Origen}" data-destino="${viaje.Destino}" title="Ver ruta en Google Maps">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-geo-alt-fill" viewBox="0 0 16 16"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
                 </button>
+                <button class="btn-icon edit" title="Editar Viaje">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg>
+                </button>
+                <!-- Aquí podríamos añadir un botón de eliminar si fuera necesario -->
             </td>
         `;
         tableBody.appendChild(row);
@@ -274,6 +278,13 @@ function handleViewContentClick(event) {
     if (clickedRow && !isActionButton) {
         const tripId = clickedRow.dataset.id;
         openViajeDetailsModal(tripId);
+    }
+
+    const editTripButton = event.target.closest('.btn-icon.edit');
+    if (editTripButton) {
+        const tripId = editTripButton.closest('.clickable-row').dataset.id;
+        // Llamaremos a nuestra función de modal, pero ahora pasándole un ID
+        openCrearViajeModal(tripId);
     }
 
     // >>> AÑADE ESTA LÓGICA NUEVA PARA CHOFERES <<<
@@ -416,150 +427,163 @@ async function loadViajesTable() {
  * @param {Event} e El evento de submit del formulario.
  */
 /**
- * Abre el nuevo modal detallado para crear un plan de viaje.
- * (La funcionalidad de edición la añadiremos después para simplificar).
+ * Abre el modal detallado para crear o editar un plan de viaje.
+ * Si se proporciona un tripId, entra en modo de edición.
+ * @param {string|null} tripId - El ID del viaje a editar.
  */
-async function openCrearViajeModal() {
+async function openCrearViajeModal(tripId = null) {
+    const isEditing = Boolean(tripId);
+    let viajeData = {};
+
     const modalContainer = document.getElementById('modal-container');
+    modalContainer.innerHTML = `<div class="modal-overlay visible"><div class="modal modal-lg"><div class="modal-body"><p>Cargando datos del formulario...</p></div></div></div>`;
 
-    const [clientes, choferes, vehiculos] = await Promise.all([
-        callApi('getRecords', { sheetName: 'Clientes' }),
-        callApi('getRecords', { sheetName: 'Choferes' }),
-        callApi('getRecords', { sheetName: 'Vehiculos' })
-    ]);
+    try {
+        if (isEditing) {
+            // En modo edición, primero obtenemos los datos del viaje específico
+            const todosLosViajes = await callApi('getRecords', { sheetName: 'Viajes' });
+            viajeData = todosLosViajes.find(v => v.ID === tripId);
 
-    const clientesOptions = clientes.map(c => `<option value="${c.ID}">${c.RazonSocial}</option>`).join('');
-    const choferesOptions = choferes.filter(c => c.Estado === 'Activo').map(c => `<option value="${c.ID}">${c.Nombre}</option>`).join('');
-    const vehiculosOptions = vehiculos.filter(v => v.Estado === 'Activo').map(v => `<option value="${v.ID}">${v.Patente} - ${v.Marca} ${v.Modelo}</option>`).join('');
+            if (!viajeData) {
+                throw new Error("No se pudo encontrar el viaje seleccionado.");
+            }
 
-    modalContainer.innerHTML = `
-    <div class="modal-overlay visible">
-        <div class="modal modal-lg">
-            <div class="modal-header"><h3>Crear Plan de Viaje</h3><button class="modal-close-btn">&times;</button></div>
-            <form id="form-crear-viaje">
-                <div class="modal-body">
-                    <!-- SECCIÓN 1: INFORMACIÓN GENERAL -->
-                    <div class="form-section">
-                        <h4>1. Información General del Viaje</h4>
-                        <div class="form-grid">
-                            <div class="form-group"><label>Origen</label><input type="text" id="origen" required></div>
-                            <div class="form-group"><label>Destino</label><input type="text" id="destino" required></div>
-                            <div class="form-group"><label>Fecha y Hora de Inicio</label><input type="datetime-local" id="fechaSalida" required></div>
-                            <div class="form-group"><label>Fecha y Hora de Fin (Estimada)</label><input type="datetime-local" id="fechaFin" required></div>
-                            <div class="form-group"><label>Cliente</label><select id="cliente" required>${clientesOptions}</select></div>
-                            <div class="form-group"><label>Chofer</label><select id="chofer" required>${choferesOptions}</select></div>
-                            <div class="form-group"><label>Vehículo</label><select id="vehiculo" required>${vehiculosOptions}</select></div>
-                            <div class="form-group">
-                            <label>Horas de trabajo previas del chofer</label>
-                            <input type="number" id="horasTrabajo" required min="0" placeholder="Ej: 8">
+            // --- CONTROL DE ESTADO ---
+            // Solo permitimos editar si el viaje está Pendiente o Rechazado
+            if (viajeData.Estado !== 'Pendiente' && viajeData.Estado !== 'Rechazado') {
+                alert(`Este viaje no se puede editar porque su estado es "${viajeData.Estado}".`);
+                modalContainer.innerHTML = ''; // Limpia el modal
+                return;
+            }
+        }
+
+        // Cargamos los datos para los menús desplegables
+        const [clientes, choferes, vehiculos] = await Promise.all([
+            callApi('getRecords', { sheetName: 'Clientes' }),
+            callApi('getRecords', { sheetName: 'Choferes' }),
+            callApi('getRecords', { sheetName: 'Vehiculos' })
+        ]);
+
+        const clientesOptions = clientes.map(c => `<option value="${c.ID}">${c.RazonSocial}</option>`).join('');
+        const choferesOptions = choferes.filter(c => c.Estado === 'Activo').map(c => `<option value="${c.ID}">${c.Nombre}</option>`).join('');
+        const vehiculosOptions = vehiculos.filter(v => v.Estado === 'Activo').map(v => `<option value="${v.ID}">${v.Patente} - ${v.Marca} ${v.Modelo}</option>`).join('');
+
+        modalContainer.innerHTML = `
+        <div class="modal-overlay visible">
+            <div class="modal modal-lg">
+                <div class="modal-header"><h3>${isEditing ? 'Editar' : 'Crear'} Plan de Viaje</h3><button class="modal-close-btn">&times;</button></div>
+                <form id="form-crear-viaje">
+                    <input type="hidden" id="tripId" value="${viajeData.ID || ''}">
+                    <div class="modal-body">
+                        <!-- SECCIÓN 1 -->
+                        <div class="form-section">
+                            <h4>1. Información General del Viaje</h4>
+                            <div class="form-grid">
+                                <div class="form-group"><label>Origen</label><input type="text" id="origen" required value="${viajeData.Origen || ''}"></div>
+                                <div class="form-group"><label>Destino</label><input type="text" id="destino" required value="${viajeData.Destino || ''}"></div>
+                                <div class="form-group"><label>Fecha y Hora de Inicio</label><input type="datetime-local" id="fechaSalida" required></div>
+                                <div class="form-group"><label>Fecha y Hora de Fin (Estimada)</label><input type="datetime-local" id="fechaFin" required></div>
+                                <div class="form-group"><label>Cliente</label><select id="cliente" required>${clientesOptions}</select></div>
+                                <div class="form-group"><label>Chofer</label><select id="chofer" required>${choferesOptions}</select></div>
+                                <div class="form-group"><label>Vehículo</label><select id="vehiculo" required>${vehiculosOptions}</select></div>
+                                <div class="form-group"><label>Horas de trabajo previas</label><input type="number" id="horasTrabajo" required min="0" value="${viajeData.HorasTrabajoPrevias || ''}"></div>
+                                <div class="form-group full-width"><label>Propósito del Viaje</label><input type="text" id="proposito" required value="${viajeData.Proposito || ''}"></div>
+                                <div class="form-group full-width"><label>Ruta a Seguir</label><textarea id="ruta" rows="2">${viajeData.RutaDetallada || ''}</textarea></div>
+                            </div>
                         </div>
-                            <div class="form-group"><label>Propósito del Viaje</label><input type="text" id="proposito" required></div>
-                            <div class="form-group full-width"><label>Ruta a Seguir</label><textarea id="ruta" rows="2"></textarea></div>
+                        
+                        <!-- SECCIÓN 2 -->
+                        <div class="form-section">
+                            <h4>2. Checklist de Seguridad del Vehículo</h4>
+                            <div class="checklist-grid security-checklist">
+                                <label><input type="checkbox" name="seguridad" value="tarjeta_verde"> Tarjeta Verde</label>
+                                <label><input type="checkbox" name="seguridad" value="licencia"> Licencia de Conducir</label>
+                                <label><input type="checkbox" name="seguridad" value="dni"> DNI</label>
+                                <label><input type="checkbox" name="seguridad" value="vtv"> VTV</label>
+                                <label><input type="checkbox" name="seguridad" value="seguro"> Seguro Automotor</label>
+                                <label><input type="checkbox" name="seguridad" value="matafuegos"> Matafuegos</label>
+                                <label><input type="checkbox" name="seguridad" value="botiquin"> Botiquín</label>
+                                <label><input type="checkbox" name="seguridad" value="triangulo_chaleco"> Triángulo y Chaleco</label>
+                                <label><input type="checkbox" name="seguridad" value="rueda_auxilio"> Rueda de Auxilio</label>
+                                <label><input type="checkbox" name="seguridad" value="descanso_obligatorio"> Descanso Obligatorio Cumplido</label>
+                            </div>
+                        </div>
+
+                        <!-- SECCIÓN 3 -->
+                        <div class="form-section">
+                            <h4>3. Análisis de Riesgos</h4>
+                            <div class="riesgo-grid">
+                                <div class="riesgo-group"><h5>A. Distancia</h5><label><input type="radio" name="distancia" data-points="1" required> Menor a 50km <span class="pts">1pts</span></label><label><input type="radio" name="distancia" data-points="2"> Menor a 100km <span class="pts">2pts</span></label><label><input type="radio" name="distancia" data-points="3"> Menor a 200km <span class="pts">3pts</span></label><label><input type="radio" name="distancia" data-points="4"> Más de 200km <span class="pts">4pts</span></label></div>
+                                <div class="riesgo-group"><h5>B. Condiciones de la Ruta</h5><label><input type="radio" name="ruta_cond" data-points="1" required> Pavimento en buen estado <span class="pts">1pts</span></label><label><input type="radio" name="ruta_cond" data-points="2"> Pavimento en mal estado <span class="pts">2pts</span></label><label><input type="radio" name="ruta_cond" data-points="3"> Camino consolidado <span class="pts">3pts</span></label><label><input type="radio" name="ruta_cond" data-points="4"> Ripio <span class="pts">4pts</span></label></div>
+                                <div class="riesgo-group"><h5>C. Condiciones Meteorológicas</h5><label><input type="radio" name="clima" data-points="1" required> Seco <span class="pts">1pts</span></label><label><input type="radio" name="clima" data-points="2"> Viento Fuerte <span class="pts">2pts</span></label><label><input type="radio" name="clima" data-points="3"> Lluvia Torrencial <span class="pts">3pts</span></label><label><input type="radio" name="clima" data-points="4"> Niebla / Hielo / Nieve <span class="pts">4pts</span></label></div>
+                                <div class="riesgo-group"><h5>D. Comunicación</h5><label><input type="radio" name="comunicacion" data-points="1" required> Teléfono celular o radio <span class="pts">1 pts</span></label><label><input type="radio" name="comunicacion" data-points="2"> Sin comunicación <span class="pts">2 pts</span></label></div>
+                                <div class="riesgo-group"><h5>E. Tipo de Viaje (Convoy)</h5><label><input type="radio" name="convoy" data-points="1" required> 2 o más vehículos con 2 o más conductores <span class="pts">1 pts</span></label><label><input type="radio" name="convoy" data-points="2"> 2 o más vehículos con 1 conductor <span class="pts">2 pts</span></label><label><input type="radio" name="convoy" data-points="3"> 1 vehículo con 2 o más conductores <span class="pts">3 pts</span></label><label><input type="radio" name="convoy" data-points="4"> 1 vehículo y 1 conductor <span class="pts">4 pts</span></label></div>
+                                <div class="riesgo-group"><h5>F. Condiciones del Tránsito</h5><label><input type="radio" name="transito" data-points="1" required> Tráfico bajo <span class="pts">1 pts</span></label><label><input type="radio" name="transito" data-points="2"> Tráfico moderado <span class="pts">2 pts</span></label><label><input type="radio" name="transito" data-points="3"> Tráfico alto <span class="pts">3 pts</span></label><label><input type="radio" name="transito" data-points="4"> Alto tráfico de camiones y/o motocicletas <span class="pts">4 pts</span></label></div>
+                            </div>
+                        </div>
+                        
+                        <!-- SECCIÓN 4 -->
+                        <div class="form-section">
+                            <h4>4. Resultado del Análisis</h4>
+                            <div class="resultado-box"><span>Puntaje Total:</span><strong id="puntaje-total">0</strong></div>
                         </div>
                     </div>
-                    
-                    <!-- SECCIÓN 2: CHECKLIST DE SEGURIDAD -->
-                    <div class="form-section">
-                        <h4>2. Checklist de Seguridad del Vehículo</h4>
-                        <div class="checklist-grid security-checklist">
-                            <label><input type="checkbox" name="seguridad" value="tarjeta_verde"> Tarjeta Verde</label>
-                            <label><input type="checkbox" name="seguridad" value="licencia"> Licencia de Conducir</label>
-                            <label><input type="checkbox" name="seguridad" value="dni"> DNI</label>
-                            <label><input type="checkbox" name="seguridad" value="vtv"> VTV</label>
-                            <label><input type="checkbox" name="seguridad" value="seguro"> Seguro Automotor</label>
-                            <label><input type="checkbox" name="seguridad" value="matafuegos"> Matafuegos</label>
-                            <label><input type="checkbox" name="seguridad" value="botiquin"> Botiquín</label>
-                            <label><input type="checkbox" name="seguridad" value="triangulo_chaleco"> Triángulo y Chaleco</label>
-                            <label><input type="checkbox" name="seguridad" value="rueda_auxilio"> Rueda de Auxilio</label> 
-                            <label><input type="checkbox" name="seguridad" value="descanso_obligatorio"> Descanso Obligatorio</label> 
-                        </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary modal-close-btn">Cancelar</button>
+                        <button type="submit" class="btn-primary">${isEditing ? 'Guardar Cambios' : 'Guardar y Enviar'}</button>
                     </div>
-
-                    <!-- SECCIÓN 3: ANÁLISIS DE RIESGOS -->
-                    <div class="form-section">
-                        <h4>3. Análisis de Riesgos</h4>
-                        <div class="riesgo-grid">
-                            <div class="riesgo-group">
-                                <h5>A. Distancia</h5>
-                                <label><input type="radio" name="distancia" data-points="1" required> Menor a 50km <span class="pts">1pts</span></label>
-                                <label><input type="radio" name="distancia" data-points="2"> Menor a 100km <span class="pts">2pts</span></label>
-                                <label><input type="radio" name="distancia" data-points="3"> Menor a 200km <span class="pts">3pts</span></label>
-                                <label><input type="radio" name="distancia" data-points="4"> Más de 200km <span class="pts">4pts</span></label>
-                            </div>
-                            <div class="riesgo-group">
-                                <h5>B. Condiciones de la Ruta</h5>
-                                <label><input type="radio" name="ruta_cond" data-points="1" required> Pavimento en buen estado <span class="pts">1pts</span></label>
-                                <label><input type="radio" name="ruta_cond" data-points="2"> Pavimento en mal estado <span class="pts">2pts</span></label>
-                                <label><input type="radio" name="ruta_cond" data-points="3"> Camino consolidado <span class="pts">3pts</span></label>
-                                <label><input type="radio" name="ruta_cond" data-points="4"> Ripio <span class="pts">4pts</span></label>
-                            </div>
-                            <div class="riesgo-group">
-                                <h5>C. Condiciones Meteorológicas</h5>
-                                <label><input type="radio" name="clima" data-points="1" required> Seco <span class="pts">1pts</span></label>
-                                <label><input type="radio" name="clima" data-points="2"> Viento Fuerte <span class="pts">2pts</span></label>
-                                <label><input type="radio" name="clima" data-points="3"> Lluvia Torrencial <span class="pts">3pts</span></label>
-                                <label><input type="radio" name="clima" data-points="4"> Niebla / Hielo / Nieve <span class="pts">4pts</span></label>
-                            </div>
-                            <div class="riesgo-group">
-                                <h5>D. Comunicación</h5>
-                                <label><input type="radio" name="comunicacion" data-points="1" required> Teléfono celular o radio <span class="pts">1 pts</span></label>
-                                <label><input type="radio" name="comunicacion" data-points="2"> Sin comunicación <span class="pts">2 pts</span></label>
-                            </div>
-                            <div class="riesgo-group">
-                                <h5>E. Tipo de Viaje</h5>
-                                <label><input type="radio" name="convoy" data-points="1" required> 2 o más vehículos con 2 o más conductores <span class="pts">1 pts</span></label>
-                                <label><input type="radio" name="convoy" data-points="2"> 2 o más vehículos con 1 conductor <span class="pts">2 pts</span></label>
-                                <label><input type="radio" name="convoy" data-points="3"> 1 vehículo con 2 o más conductores <span class="pts">3 pts</span></label>
-                                <label><input type="radio" name="convoy" data-points="4"> 1 vehículo y 1 conductor <span class="pts">4 pts</span></label>
-                            </div>
-                            <div class="riesgo-group">
-                                <h5>F. Condiciones del Tránsito</h5>
-                                <label><input type="radio" name="transito" data-points="1" required> Tráfico bajo <span class="pts">1 pts</span></label>
-                                <label><input type="radio" name="transito" data-points="2"> Tráfico moderado <span class="pts">2 pts</span></label>
-                                <label><input type="radio" name="transito" data-points="3"> Tráfico alto <span class="pts">3 pts</span></label>
-                                <label><input type="radio" name="transito" data-points="4"> Alto tráfico de camiones y/o motocicletas <span class="pts">4 pts</span></label>
-                            </div>
-                        </div>
-                    </div>    
-                    <!-- SECCIÓN 4: RESULTADO -->
-                    <div class="form-section">
-                        <h4>4. Resultado del Análisis</h4>
-                        <div class="resultado-box">
-                            <span>Riesgo Total:</span>
-                            <strong id="puntaje-total">0</strong>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary modal-close-btn">Cancelar</button>
-                    <button type="submit" class="btn-primary">Guardar y Enviar Plan de Viaje</button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
-    </div>
-    `;
+        `;
 
-    // Lógica para cerrar el modal
-    const overlay = modalContainer.querySelector('.modal-overlay');
-    overlay.querySelectorAll('.modal-close-btn').forEach(btn => btn.addEventListener('click', () => overlay.classList.remove('visible')));
-    
-    // Lógica para el cálculo de puntos
-    const riesgoInputs = modalContainer.querySelectorAll('input[type="radio"][data-points]');
-    riesgoInputs.forEach(input => {
-        input.addEventListener('change', () => {
+        // --- LÓGICA PARA RELLENAR LOS CAMPOS EN MODO EDICIÓN ---
+        if (isEditing) {
+            document.getElementById('cliente').value = viajeData.ClienteID;
+            document.getElementById('chofer').value = viajeData.ChoferID;
+            document.getElementById('vehiculo').value = viajeData.VehiculoID;
+            // El formato YYYY-MM-DDTHH:mm es requerido por el input datetime-local
+            document.getElementById('fechaSalida').value = viajeData.FechaHoraSalida ? new Date(new Date(viajeData.FechaHoraSalida).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
+            document.getElementById('fechaFin').value = viajeData.FechaHoraFinEstimada ? new Date(new Date(viajeData.FechaHoraFinEstimada).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
+        
+            // Rellenar checklists
+            const checklistSeguridad = JSON.parse(viajeData.ChecklistSeguridad || '{}');
+            Object.keys(checklistSeguridad).forEach(key => {
+                const checkbox = document.querySelector(`.security-checklist input[value="${key}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
+
+            const respuestasRiesgos = JSON.parse(viajeData.RespuestasRiesgos || '{}');
+            Object.keys(respuestasRiesgos).forEach(groupName => {
+                const radio = document.querySelector(`input[name="${groupName}"][data-points="${respuestasRiesgos[groupName].puntos}"]`);
+                if (radio) radio.checked = true;
+            });
+        }
+
+        // Lógica para cerrar el modal
+        const overlay = modalContainer.querySelector('.modal-overlay');
+        overlay.querySelectorAll('.modal-close-btn').forEach(btn => btn.addEventListener('click', () => overlay.classList.remove('visible')));
+        
+        // Lógica para el cálculo de puntos
+        const riesgoInputs = modalContainer.querySelectorAll('input[type="radio"][data-points]');
+        const calculateTotalPoints = () => {
             let totalPuntos = 0;
-            const gruposRiesgo = modalContainer.querySelectorAll('.riesgo-group');
-            gruposRiesgo.forEach(grupo => {
-                const checkedInput = grupo.querySelector('input[type="radio"]:checked');
-                if (checkedInput) {
-                    totalPuntos += parseInt(checkedInput.dataset.points, 10);
-                }
+            modalContainer.querySelectorAll('input[type="radio"][data-points]:checked').forEach(input => {
+                totalPuntos += parseInt(input.dataset.points, 10);
             });
             document.getElementById('puntaje-total').textContent = totalPuntos;
-        });
-    });
-    
-    document.getElementById('form-crear-viaje').addEventListener('submit', handleViajeFormSubmit);
+        };
+        riesgoInputs.forEach(input => input.addEventListener('change', calculateTotalPoints));
+        
+        // Calculamos el puntaje inicial si estamos editando
+        if(isEditing) calculateTotalPoints();
+        
+        document.getElementById('form-crear-viaje').addEventListener('submit', handleViajeFormSubmit);
+
+    } catch (error) {
+        alert(`Error al cargar el formulario: ${error.message}`);
+        modalContainer.innerHTML = '';
+    }
 }
 
 // Archivo: main.js -> REEMPLAZA esta función
@@ -690,75 +714,7 @@ async function openViajeDetailsModal(tripId) {
 /**
  * Maneja el envío del nuevo formulario de viaje detallado.
  */
-async function handleViajeFormSubmit(e) {
-    e.preventDefault();
-    const user = JSON.parse(sessionStorage.getItem('user')); // Obtener el usuario actual
 
-
-    // 1. Recolectar datos básicos
-    const viajeData = {
-        ClienteID: document.getElementById('cliente').value,
-        ChoferID: document.getElementById('chofer').value,
-        VehiculoID: document.getElementById('vehiculo').value,
-        Origen: document.getElementById('origen').value,
-        Destino: document.getElementById('destino').value,
-        FechaHoraSalida: document.getElementById('fechaSalida').value,
-        FechaHoraFinEstimada: document.getElementById('fechaFin').value,
-        Proposito: document.getElementById('proposito').value,
-        RutaDetallada: document.getElementById('ruta').value,
-        HorasTrabajoPrevias: document.getElementById('horasTrabajo').value,
-
-        Estado: 'Pendiente',
-        // >>> AÑADIMOS EL DATO DE AUDITORÍA <<<
-        UsuarioCreadorID: user.id 
-    };
-    
-    // 2. Recolectar checklist de seguridad
-    const checklistSeguridad = {};
-    document.querySelectorAll('.security-checklist input:checked').forEach(input => {
-        checklistSeguridad[input.value] = true;
-    });
-    viajeData.ChecklistSeguridad = checklistSeguridad;
-
-    // 3. Recolectar respuestas y calcular puntaje de riesgo
-    const respuestasRiesgos = {};
-    let puntajeTotal = 0;
-    const gruposRiesgo = document.querySelectorAll('.riesgo-group');
-    gruposRiesgo.forEach(grupo => {
-        const checkedInput = grupo.querySelector('input[type="radio"]:checked');
-        if (checkedInput) {
-            const groupName = checkedInput.name;
-            const points = parseInt(checkedInput.dataset.points, 10);
-            const valueText = checkedInput.parentElement.textContent.replace(/\s?\d+pts\s?/, '').trim();
-            
-            respuestasRiesgos[groupName] = { valor: valueText, puntos: points };
-            puntajeTotal += points;
-        }
-    });
-    viajeData.RespuestasRiesgos = respuestasRiesgos;
-    viajeData.PuntajeRiesgo = puntajeTotal;
-
-    // 4. Determinar Nivel de Riesgo basado en el puntaje
-    if (puntajeTotal >= 8) { // Ejemplo: 8 puntos o más es Alto
-        viajeData.RiesgoCalculado = 'Alto';
-    } else if (puntajeTotal >= 5) { // Ejemplo: 5 a 7 puntos es Medio
-        viajeData.RiesgoCalculado = 'Medio';
-    } else { // Menos de 5 es Bajo
-        viajeData.RiesgoCalculado = 'Bajo';
-    }
-    
-    // 5. Enviar a la API
-    const result = await callApi('createRecord', {
-        sheetName: 'Viajes',
-        data: viajeData
-    });
-
-    if (result) {
-        alert(`Viaje creado exitosamente con un nivel de riesgo: ${viajeData.RiesgoCalculado}`);
-        document.querySelector('.modal-overlay').classList.remove('visible');
-        loadViajesTable();
-    }
-}
 
 async function loadAprobacionesView() {
     const user = JSON.parse(sessionStorage.getItem('user'));
@@ -907,7 +863,6 @@ async function initChoferView() {
     }
 
     const clientesMap = new Map(clientes.map(c => [c.ID, c.RazonSocial]));
-    const vehiculosMap = new Map(vehiculos.map(v => `${v.Patente} - ${v.Marca} ${v.Modelo}`));
 
     const misViajes = viajes.filter(v => 
         v.ChoferID === user.choferId && ['Aprobado', 'En curso', 'Finalizado'].includes(v.Estado)
@@ -1864,4 +1819,88 @@ function renderAlerts(alertas) {
     renderList('licencias-list', alertas.licencias);
     renderList('vtvs-list', alertas.vtvs);
     renderList('seguros-list', alertas.seguros);
+}
+/**
+ * Maneja el envío del formulario de viaje, ya sea para crear uno nuevo o para actualizar uno existente.
+ */
+async function handleViajeFormSubmit(e) {
+    e.preventDefault();
+    const user = JSON.parse(sessionStorage.getItem('user'));
+    
+    // Detectamos si estamos en modo edición por el ID oculto
+    const tripId = document.getElementById('tripId').value;
+    const isEditing = Boolean(tripId);
+
+    // 1. Recolectar datos básicos
+    const viajeData = {
+        ClienteID: document.getElementById('cliente').value,
+        ChoferID: document.getElementById('chofer').value,
+        VehiculoID: document.getElementById('vehiculo').value,
+        Origen: document.getElementById('origen').value,
+        Destino: document.getElementById('destino').value,
+        FechaHoraSalida: document.getElementById('fechaSalida').value,
+        FechaHoraFinEstimada: document.getElementById('fechaFin').value,
+        HorasTrabajoPrevias: document.getElementById('horasTrabajo').value,
+        Proposito: document.getElementById('proposito').value,
+        RutaDetallada: document.getElementById('ruta').value,
+        // Al editar un viaje, su estado siempre vuelve a "Pendiente" para una nueva aprobación.
+        //Estado: 'Pendiente'
+    };
+    
+    // 2. Recolectar checklist de seguridad
+    const checklistSeguridad = {};
+    document.querySelectorAll('.security-checklist input:checked').forEach(input => {
+        checklistSeguridad[input.value] = true;
+    });
+    viajeData.ChecklistSeguridad = checklistSeguridad;
+
+    // 3. Recolectar respuestas y calcular puntaje de riesgo
+    const respuestasRiesgos = {};
+    let puntajeTotal = 0;
+    const gruposRiesgo = document.querySelectorAll('.riesgo-group');
+    gruposRiesgo.forEach(grupo => {
+        const checkedInput = grupo.querySelector('input[type="radio"]:checked');
+        if (checkedInput) {
+            const groupName = checkedInput.name;
+            const points = parseInt(checkedInput.dataset.points, 10);
+            const valueText = checkedInput.parentElement.textContent.replace(/\s?\d+pts\s?/, '').trim();
+            respuestasRiesgos[groupName] = { valor: valueText, puntos: points };
+            puntajeTotal += points;
+        }
+    });
+    viajeData.RespuestasRiesgos = respuestasRiesgos;
+    viajeData.PuntajeRiesgo = puntajeTotal;
+
+    // 4. Determinar Nivel de Riesgo basado en el puntaje
+    if (puntajeTotal >= 19) {
+        viajeData.RiesgoCalculado = 'Alto';
+    } else if (puntajeTotal >= 13) {
+        viajeData.RiesgoCalculado = 'Medio';
+    } else {
+        viajeData.RiesgoCalculado = 'Bajo';
+    }
+    
+    // 5. Enviar a la API (Crear o Actualizar)
+    let result;
+    if (isEditing) {
+        // Al editar, NO actualizamos el creador ni la fecha de creación
+        result = await callApi('updateRecord', {
+            sheetName: 'Viajes',
+            id: tripId,
+            data: viajeData
+        });
+    } else {
+        // Añadimos la información de auditoría solo al crear
+        viajeData.UsuarioCreadorID = user.id;
+        result = await callApi('createRecord', {
+            sheetName: 'Viajes',
+            data: viajeData
+        });
+    }
+
+    if (result) {
+        alert(`Viaje ${isEditing ? 'actualizado' : 'creado'} exitosamente. Puntaje: ${puntajeTotal}. Nivel de riesgo: ${viajeData.RiesgoCalculado}`);
+        document.querySelector('.modal-overlay').classList.remove('visible');
+        initViajesView(); // Recargar la tabla
+    }
 }
