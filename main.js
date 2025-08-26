@@ -40,17 +40,32 @@ function initLogin() {
 /**
  * Inicializa el dashboard principal después de un login exitoso.
  */
-function initDashboard() {
+    function initDashboard() {
     // Añadimos el overlay al body una sola vez
     if (!document.querySelector('.sidebar-overlay')) {
         const overlay = document.createElement('div');
         overlay.className = 'sidebar-overlay';
         document.body.appendChild(overlay);
     }
+
     const user = JSON.parse(sessionStorage.getItem('user'));
     if (!user) return;
 
-    document.getElementById('user-info').innerHTML = `<span>Hola, <strong>${user.nombre}</strong> (${user.rol})</span>`;
+    // --- LÓGICA DEL ENLACE DE PERFIL (LA PARTE NUEVA) ---
+    const userInfo = document.getElementById('user-info');
+    if (userInfo) {
+        userInfo.innerHTML = `<span>Hola, <strong>${user.nombre}</strong> (${user.rol})</span>`;
+        
+        // Hacemos que parezca un enlace
+        userInfo.style.cursor = 'pointer';
+        userInfo.style.textDecoration = 'underline';
+        userInfo.title = 'Ir a Mi Perfil';
+        
+        // Le añadimos la acción de ir a la página de perfil
+        userInfo.addEventListener('click', () => {
+            window.location.hash = '/profile';
+        });
+    }
     
     const logoutBtn = document.getElementById('logoutBtn');
     logoutBtn.addEventListener('click', (e) => {
@@ -97,7 +112,7 @@ function initDashboard() {
         });
     }
 
-    filterMenuByRole(user.rol);
+    filterMenuByRole(user.rol);'/dashboard'
     loadSubView('/dashboard');
 }
 
@@ -146,6 +161,7 @@ function loadSubView(path) {
             case '/choferes': loadChoferesView(); break;
             case '/vehiculos': loadVehiculosView(); break;
             case '/clientes': loadClientesView(); break;
+            case '/profile': loadProfileView(); break;
             case '/viajes':
             initViajesView(); // Llamaremos a una nueva función de inicialización
             break;
@@ -1901,7 +1917,7 @@ async function handleViajeFormSubmit(e) {
         Proposito: document.getElementById('proposito').value,
         RutaDetallada: document.getElementById('ruta').value,
         // Al editar un viaje, su estado siempre vuelve a "Pendiente" para una nueva aprobación.
-        //Estado: 'Pendiente'
+        Estado: 'Pendiente'
     };
     
     // 2. Recolectar checklist de seguridad
@@ -1960,4 +1976,53 @@ async function handleViajeFormSubmit(e) {
         document.querySelector('.modal-overlay').classList.remove('visible');
         initViajesView(); // Recargar la tabla
     }
+}
+/**
+ * Carga la vista de perfil y asigna el listener al formulario de cambio de contraseña.
+ * ESTA ES LA FUNCIÓN QUE FALTABA.
+ */
+function loadProfileView() {
+    const profileForm = document.getElementById('profile-form');
+    if (profileForm) {
+        profileForm.addEventListener('submit', handleProfileFormSubmit);
+    }
+}
+
+/**
+ * Maneja el envío del formulario de cambio de contraseña.
+ * Valida los datos y llama a la API para actualizar la contraseña.
+ */
+async function handleProfileFormSubmit(e) {
+    e.preventDefault();
+
+    const currentPassword = document.getElementById('current-password').value;
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+
+    // Validación en el cliente (frontend)
+    if (newPassword !== confirmPassword) {
+        alert("Error: Las nuevas contraseñas no coinciden.");
+        return;
+    }
+    if (!newPassword || newPassword.length < 6) {
+        alert("Error: La nueva contraseña debe tener al menos 6 caracteres.");
+        return;
+    }
+
+    // Obtenemos el ID del usuario que está en la sesión
+    const user = JSON.parse(sessionStorage.getItem('user'));
+
+    // Llamamos a nuestra nueva función del backend
+    const result = await callApi('updatePassword', {
+        userId: user.id,
+        currentPassword: currentPassword,
+        newPassword: newPassword
+    });
+
+    if (result) {
+        alert(result); // Muestra "Contraseña actualizada exitosamente..."
+        document.getElementById('profile-form').reset(); // Limpia el formulario
+    }
+    // La función callApi se encarga de mostrar los errores del backend,
+    // como "La contraseña actual es incorrecta."
 }

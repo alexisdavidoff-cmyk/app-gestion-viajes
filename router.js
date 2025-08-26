@@ -45,6 +45,7 @@ const routes = {
                 <div class="header">
                 
                 <h1 id="view-title">Bienvenido</h1>
+                
                 <div id="user-info"></div>
                 </div>
                 <div id="view-content" class="card">
@@ -69,7 +70,7 @@ const routes = {
     `,
 };
 
-const Router = {
+/**const Router = {
     init: () => {
         window.addEventListener('hashchange', Router.handleRouteChange);
         Router.handleRouteChange(); // Carga la ruta inicial
@@ -106,8 +107,61 @@ const Router = {
         else if (mainRoute === '/chofer') initChoferView(); // Nueva función
         else initLogin();
     }
-};
+};**/
 
+const Router = {
+    init: () => {
+        window.addEventListener('hashchange', Router.handleRouteChange);
+        Router.handleRouteChange();
+    },
+    handleRouteChange: () => {
+        const path = window.location.hash.slice(1) || '/';
+        const user = JSON.parse(sessionStorage.getItem('user'));
+
+        // --- LÓGICA DE SEGURIDAD MEJORADA ---
+        const isInternalRoute = path.startsWith('/dashboard') || path.startsWith('/chofer') || path.startsWith('/profile');
+
+        if (isInternalRoute && !user) {
+            // Si intenta acceder a una ruta interna SIN sesión, lo expulsamos al login.
+            window.location.hash = '/';
+            return;
+        }
+
+        if (path === '/' && user) {
+            // Si ya tiene sesión e intenta ir al login, lo llevamos a su página principal.
+            if (user.rol === 'Chofer') { window.location.hash = '/chofer'; }
+            else { window.location.hash = '/dashboard'; }
+            return;
+        }
+
+        // --- LÓGICA DE RENDERIZADO MEJORADA ---
+        let mainRoute;
+        if (isInternalRoute) {
+            // Si es CUALQUIER ruta interna, la base del layout es el D DASHBOARD
+            // (esto es para que la barra lateral y el header aparezcan también en la página de perfil)
+             if (user.rol === 'Chofer') {
+                mainRoute = '/chofer'; // A menos que sea el chofer
+            } else {
+                mainRoute = '/dashboard';
+            }
+        } else {
+            mainRoute = '/';
+        }
+        
+        // Renderizamos el layout principal (login, dashboard o vista de chofer)
+        appContainer.innerHTML = routes[mainRoute];
+
+        // Inicializamos el script del layout correspondiente
+        if (mainRoute === '/dashboard') initDashboard();
+        else if (mainRoute === '/chofer') initChoferView();
+        else initLogin();
+        
+        // Si estamos en una sub-vista (como /profile), la cargamos dentro del layout del dashboard
+        if (mainRoute === '/dashboard' && path !== '/dashboard') {
+            loadSubView(path);
+        }
+    }
+};
 // Archivo: router.js (Sección actualizada)
 
 // ... (código anterior del router) ...
@@ -183,6 +237,7 @@ const subViews = {
     '/usuarios': {
         title: 'Gestión de Usuarios',
         template: `
+            
             <div class="view-header">
                 <button id="btn-nuevo-usuario" class="btn-primary">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
@@ -327,7 +382,35 @@ const subViews = {
                 </div>
             </div>
         `
-    }
+    },
+    '/profile': {
+    title: 'Mi Perfil',
+    template: `
+        <div class="card">
+            <h3>Cambiar Contraseña</h3>
+            <p>Para cambiar tu contraseña, por favor ingresa tu contraseña actual seguida de la nueva.</p>
+            <form id="profile-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="current-password">Contraseña Actual</label>
+                        <input type="password" id="current-password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-password">Nueva Contraseña</label>
+                        <input type="password" id="new-password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm-password">Confirmar Nueva Contraseña</label>
+                        <input type="password" id="confirm-password" required>
+                    </div>
+                </div>
+                <div class="form-footer">
+                    <button type="submit" class="btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    `
+}
 
 
 
