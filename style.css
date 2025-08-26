@@ -909,6 +909,18 @@ body {
 
 /* Usaremos esta media query para aplicar los estilos solo en pantallas pequeñas */
 @media screen and (max-width: 768px) {
+
+    .view-header {
+        flex-direction: column; /* Apila los elementos verticalmente */
+        align-items: stretch; /* Estira los elementos para que ocupen el mismo ancho */
+        gap: 1rem; /* Añade espacio entre el botón y los controles */
+    }
+    
+    /* Hacemos que los controles de la tabla (búsqueda y orden) también se apilen */
+    .table-controls {
+        flex-direction: column; /* Apila el input y el select */
+        gap: 0.5rem; /* Añade un pequeño espacio entre ellos */
+    }
     
     /* --- 1. LÓGICA DEL MENÚ HAMBURGUESA --- */
     
