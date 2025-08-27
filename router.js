@@ -178,6 +178,14 @@ const subViews = {
             
             <!-- >>> CONTROLES DE FILTRO Y ORDEN AÑADIDOS <<< -->
             <div class="table-controls">
+            <div class="date-filter-group">
+                    <label for="filter-date-from">Desde:</label>
+                    <input type="date" id="filter-date-from">
+                </div>
+                <div class="date-filter-group">
+                    <label for="filter-date-to">Hasta:</label>
+                    <input type="date" id="filter-date-to">
+                </div>
                 <input type="text" id="filter-input" placeholder="Buscar por cliente, chofer, origen...">
                 <select id="sort-select">
                     <option value="fecha-desc">Más recientes primero</option>
@@ -196,7 +204,8 @@ const subViews = {
                         <th>Chofer</th>
                         <th>Origen</th>
                         <th>Destino</th>
-                        <th>Fecha/Hora</th>
+                        <th>Inicio Programado</th> 
+                        <th>Fin Estimado</th>
                         <th>Estado</th>
                         <th>Riesgo</th>
                         <th>Acciones</th>
@@ -221,7 +230,8 @@ const subViews = {
                             <th>Chofer</th>
                             <th>Origen</th>
                             <th>Destino</th>
-                            <th>Fecha/Hora</th>
+                            <th>Inicio Programado</th>
+                            <th>Fin Estimado</th>
                             <th>Riesgo</th>
                             <th>Acciones</th>
                         </tr>

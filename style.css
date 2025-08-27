@@ -919,7 +919,7 @@ body {
     /* Hacemos que los controles de la tabla (búsqueda y orden) también se apilen */
     .table-controls {
         flex-direction: column; /* Apila el input y el select */
-        gap: 0.5rem; /* Añade un pequeño espacio entre ellos */
+        gap: 1rem; /* Añade un pequeño espacio entre ellos */
     }
     
     /* --- 1. LÓGICA DEL MENÚ HAMBURGUESA --- */
@@ -1078,4 +1078,16 @@ body {
 .menu-toggle-btn {
     display: none;
 
+}
+
+.date-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.date-filter-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #555;
 }

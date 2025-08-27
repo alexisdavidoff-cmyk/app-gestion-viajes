@@ -199,28 +199,56 @@ async function initViajesView() {
     // Añadimos los event listeners a los controles de filtro y orden
     document.getElementById('filter-input').addEventListener('input', () => renderViajesTable());
     document.getElementById('sort-select').addEventListener('change', () => renderViajesTable());
+
+    // >>> AÑADIMOS LISTENERS PARA LOS NUEVOS CAMPOS DE FECHA <<<
+    document.getElementById('filter-date-from').addEventListener('change', () => renderViajesTable());
+    document.getElementById('filter-date-to').addEventListener('change', () => renderViajesTable());
     
     // Renderizamos la tabla por primera vez
     renderViajesTable();
 }
 
 /**
- * Renderiza la tabla de viajes aplicando los filtros y el orden actual.
- * Ya no necesita llamar a la API, trabaja con los datos en allTripsData.
+ * Renderiza la tabla de viajes aplicando los filtros (texto y fecha) y el orden actual.
  */
 function renderViajesTable() {
     const filterText = document.getElementById('filter-input').value.toLowerCase();
     const sortBy = document.getElementById('sort-select').value;
     
+    // --- LÓGICA NUEVA: LEER LAS FECHAS DEL FILTRO ---
+    const dateFromStr = document.getElementById('filter-date-from').value;
+    const dateToStr = document.getElementById('filter-date-to').value;
+
+    // Convertimos las fechas del filtro a objetos Date.
+    // Les ponemos la hora al inicio y al final del día para incluir el rango completo.
+    const dateFrom = dateFromStr ? new Date(dateFromStr + 'T00:00:00') : null;
+    const dateTo = dateToStr ? new Date(dateToStr + 'T23:59:59') : null;
+
     // 1. Filtrar datos
     let filteredTrips = allTripsData.filter(viaje => {
-        return (
+        // --- FILTRO DE TEXTO (lógica existente) ---
+        const textMatch = (
             viaje.clienteNombre.toLowerCase().includes(filterText) ||
             viaje.choferNombre.toLowerCase().includes(filterText) ||
             viaje.Origen.toLowerCase().includes(filterText) ||
             viaje.Destino.toLowerCase().includes(filterText) ||
-            viaje.IDViajeLegible.toLowerCase().includes(filterText)
+            viaje.IDViajeLegible.toLowerCase().includes(filterText)||
+            viaje.Estado.toLowerCase().includes(filterText)
         );
+
+        // --- FILTRO DE FECHA (lógica nueva) ---
+        const tripStartDate = new Date(viaje.FechaHoraSalida);
+        let dateMatch = true; // Asumimos que coincide a menos que un filtro falle
+
+        if (dateFrom && tripStartDate < dateFrom) {
+            dateMatch = false; // El viaje empezó ANTES del "Desde"
+        }
+        if (dateTo && tripStartDate > dateTo) {
+            dateMatch = false; // El viaje empezó DESPUÉS del "Hasta"
+        }
+
+        // El viaje debe cumplir AMBAS condiciones (texto y fecha)
+        return textMatch && dateMatch;
     });
 
     // 2. Ordenar datos
@@ -259,7 +287,8 @@ function renderViajesTable() {
             <td>${viaje.choferNombre}</td>
             <td>${viaje.Origen}</td>
             <td>${viaje.Destino}</td>
-            <td>${new Date(viaje.FechaHoraSalida).toLocaleString()}</td>
+            <td data-label="Inicio Prog.">${new Date(viaje.FechaHoraSalida).toLocaleString()}</td>
+            <td data-label="Fin Est.">${new Date(viaje.FechaHoraFinEstimada).toLocaleString()}</td>
             <td><span class="status ${(viaje.Estado || '').toLowerCase()}">${viaje.Estado}</span></td>
             <td><span class="riesgo ${(viaje.RiesgoCalculado || '').toLowerCase()}">${viaje.RiesgoCalculado}</span></td>
             <td class="actions">
@@ -318,7 +347,7 @@ function handleViewContentClick(event) {
     // >>> AÑADE ESTA LÓGICA PARA EL CLIC EN LA FILA <<<
     const clickedRow = event.target.closest('.clickable-row');
     // Nos aseguramos de no activar esto si se hizo clic en un botón dentro de la fila
-    const isActionButton = event.target.closest('.btn-icon'); 
+    const isActionButton = event.target.closest('.btn-icon, .btn-approve, .btn-reject'); 
 
     if (clickedRow && !isActionButton) {
         const tripId = clickedRow.dataset.id;
@@ -757,24 +786,26 @@ async function openViajeDetailsModal(tripId) {
 
 
 /**
- * Maneja el envío del nuevo formulario de viaje detallado.
+ * Carga y muestra los viajes pendientes de aprobación según la jerarquía del supervisor.
+ * Un supervisor de nivel superior puede aprobar los viajes de niveles inferiores.
  */
-
-
 async function loadAprobacionesView() {
     const user = JSON.parse(sessionStorage.getItem('user'));
     if (!user || !user.rol.startsWith('Supervisor')) {
-        document.querySelector('#aprobaciones-table tbody').innerHTML = '<tr><td colspan="7">No tienes permisos para ver esta sección.</td></tr>';
+        document.querySelector('#aprobaciones-table tbody').innerHTML = '<tr><td colspan="8">No tienes permisos para ver esta sección.</td></tr>';
         return;
     }
 
-    // Mapear rol a nivel de riesgo
-    const riesgoMap = {
-        'Supervisor nivel 1': 'Bajo',
-        'Supervisor nivel 2': 'Medio',
-        'Supervisor nivel 3': 'Alto'
+    // --- LÓGICA DE JERARQUÍA MEJORADA ---
+    // Creamos un mapa de los riesgos que cada rol puede ver.
+    const riesgosPorRol = {
+        'Supervisor nivel 1': ['Bajo'],
+        'Supervisor nivel 2': ['Bajo', 'Medio'],
+        'Supervisor nivel 3': ['Bajo', 'Medio', 'Alto']
     };
-    const riesgoToApprove = riesgoMap[user.rol];
+
+    // Obtenemos la lista de riesgos permitidos para el rol del usuario actual.
+    const riesgosPermitidos = riesgosPorRol[user.rol] || [];
 
     const [viajes, clientes, choferes] = await Promise.all([
         callApi('getRecords', { sheetName: 'Viajes' }),
@@ -788,23 +819,30 @@ async function loadAprobacionesView() {
     const tableBody = document.querySelector('#aprobaciones-table tbody');
     tableBody.innerHTML = '';
 
-    const viajesPendientes = viajes.filter(v => v.Estado === 'Pendiente' && v.RiesgoCalculado === riesgoToApprove);
+    // Filtramos los viajes que están 'Pendiente' Y cuyo riesgo está en nuestra lista de permitidos.
+    const viajesPendientes = viajes.filter(v => 
+        v.Estado === 'Pendiente' && riesgosPermitidos.includes(v.RiesgoCalculado)
+    );
 
     if (viajesPendientes.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center;">No tienes viajes pendientes de aprobación.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No tienes viajes pendientes de aprobación.</td></tr>`;
         return;
     }
 
     viajesPendientes.forEach(viaje => {
         const row = document.createElement('tr');
+        row.dataset.id = viaje.ID;
+        row.classList.add('clickable-row');
+
         row.innerHTML = `
-            <td>${clientesMap.get(viaje.ClienteID) || 'N/A'}</td>
-            <td>${choferesMap.get(viaje.ChoferID) || 'N/A'}</td>
-            <td>${viaje.Origen}</td>
-            <td>${viaje.Destino}</td>
-            <td>${new Date(viaje.FechaHoraSalida).toLocaleString()}</td>
-            <td><span class="riesgo ${viaje.RiesgoCalculado.toLowerCase()}">${viaje.RiesgoCalculado}</span></td>
-            <td class="actions">
+            <td data-label="Cliente">${clientesMap.get(viaje.ClienteID) || 'N/A'}</td>
+            <td data-label="Chofer">${choferesMap.get(viaje.ChoferID) || 'N/A'}</td>
+            <td data-label="Origen">${viaje.Origen}</td>
+            <td data-label="Destino">${viaje.Destino}</td>
+            <td data-label="Inicio Prog.">${new Date(viaje.FechaHoraSalida).toLocaleString()}</td>
+            <td data-label="Fin Est.">${new Date(viaje.FechaHoraFinEstimada).toLocaleString()}</td>
+            <td data-label="Riesgo"><span class="riesgo ${viaje.RiesgoCalculado.toLowerCase()}">${viaje.RiesgoCalculado}</span></td>
+            <td data-label="Acciones" class="actions">
                 <button class="btn-approve" data-id="${viaje.ID}" title="Aprobar Viaje">✔ Aprobar</button>
                 <button class="btn-reject" data-id="${viaje.ID}" title="Rechazar Viaje">✖ Rechazar</button>
             </td>
