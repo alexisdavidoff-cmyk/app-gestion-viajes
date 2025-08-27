@@ -256,14 +256,15 @@ function renderViajesTable() {
     filteredTrips.sort((a, b) => {
         switch (sortBy) {
             case 'fecha-asc':
-                return new Date(a.FechaHoraSalida) - new Date(b.FechaHoraSalida);
+                return new Date(a.FechaCreacion) - new Date(b.FechaCreacion);
             case 'riesgo-desc':
                 return (riesgoOrder[b.RiesgoCalculado] || 0) - (riesgoOrder[a.RiesgoCalculado] || 0);
             case 'riesgo-asc':
                 return (riesgoOrder[a.RiesgoCalculado] || 0) - (riesgoOrder[b.RiesgoCalculado] || 0);
             case 'fecha-desc':
+            
             default:
-                return new Date(b.FechaHoraSalida) - new Date(a.FechaHoraSalida);
+                return new Date(b.FechaCreacion) - new Date(a.FechaCreacion);
         }
     });
     
@@ -599,7 +600,7 @@ async function openCrearViajeModal(tripId = null) {
                         <!-- SECCIÓN 4 -->
                         <div class="form-section">
                             <h4>4. Resultado del Análisis</h4>
-                            <div class="resultado-box"><span>Puntaje Total:</span><strong id="puntaje-total">0</strong></div>
+                            <div class="resultado-box"><span>Riesgo Total:</span><strong id="puntaje-total">0</strong></div>
                         </div>
                     </div>
                     <div class="modal-footer">
