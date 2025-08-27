@@ -531,7 +531,7 @@ async function openCrearViajeModal(tripId = null) {
                                 <div class="form-group"><label>Cliente</label><select id="cliente" required>${clientesOptions}</select></div>
                                 <div class="form-group"><label>Chofer</label><select id="chofer" required>${choferesOptions}</select></div>
                                 <div class="form-group"><label>Vehículo</label><select id="vehiculo" required>${vehiculosOptions}</select></div>
-                                <div class="form-group"><label>Horas de trabajo previas</label><input type="number" id="horasTrabajo" required min="0" value="${viajeData.HorasTrabajoPrevias || ''}"></div>
+                                <div class="form-group"><label>Horas de trabajo previas</label><input type="number" id="horasTrabajo" min="0" value="${viajeData.HorasTrabajoPrevias || ''}"></div>
                                 <div class="form-group full-width"><label>Propósito del Viaje</label><input type="text" id="proposito" required value="${viajeData.Proposito || ''}"></div>
                                 <div class="form-group full-width"><label>Ruta a Seguir</label><textarea id="ruta" rows="2">${viajeData.RutaDetallada || ''}</textarea></div>
                             </div>
